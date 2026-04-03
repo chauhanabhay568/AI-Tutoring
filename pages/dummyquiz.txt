@@ -1,0 +1,57 @@
+[
+    {
+        "question": "What is the output of print(2 ** 3)?",
+        "options": ["6", "8", "9", "16"],
+        "correct_answers": [1]
+    },
+    {
+        "question": "Which of the following is a mutable data type in Python?",
+        "options": ["Tuple", "String", "List", "Integer"],
+        "correct_answers": [2]
+    },
+    {
+        "question": "What will be the output of print(type([]))?",
+        "options": ["<class 'list'>", "<class 'tuple'>", "<class 'dict'>", "<class 'set'>"],
+        "correct_answers": [0]
+    },
+    {
+        "question": "What keyword is used to define a function in Python?",
+        "options": ["func", "define", "def", "lambda"],
+        "correct_answers": [2]
+    },
+    {
+        "question": "Which of the following is used to handle exceptions in Python?",
+        "options": ["try-except", "catch", "error handling", "throw"],
+        "correct_answers": [0]
+    },
+    {
+        "question": "What will be the output of print(bool('False'))?",
+        "options": ["False", "True", "Error", "None"],
+        "correct_answers": [1]
+    },
+    {
+        "question": "Which method is used to remove the last element from a list in Python?",
+        "options": ["delete", "remove()", "pop()", "discard()"],
+        "correct_answers": [2]
+    },
+    {
+        "question": "How do you create a dictionary in Python?",
+        "options": [
+            "{'key': 'value'}",
+            "['key', 'value']",
+            "('key', 'value')",
+            "None of the above"
+        ],
+        "correct_answers": [0]
+    },
+    {
+        "question": "Which of the following is NOT a valid variable name in Python?",
+        "options": ["my_variable", "_myVariable", "2variable", "myVariable2"],
+        "correct_answers": [2]
+    },
+    {
+        "question": "What is the correct way to write a comment in Python?",
+        "options": ["// This is a comment", "# This is a comment", "/* This is a comment */", "-- This is a comment"],
+        "correct_answers": [1]
+    }
+]
