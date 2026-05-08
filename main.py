@@ -12,7 +12,8 @@ init_auth_db()
 load_bootstrap()
 load_css("styles/style.css")
 
-st.session_state["on_main_page"] = True
+if "on_main_page" not in st.session_state:
+    st.session_state["on_main_page"] = True
 make_sidebar()
 
 # ── Content ───────────────────────────────────────────────────────────────────
