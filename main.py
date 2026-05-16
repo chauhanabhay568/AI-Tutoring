@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st  # type: ignore[reportMissingImports]
 from time import sleep
 
 from navigation import make_sidebar
@@ -23,8 +23,10 @@ st.write("")
 tabs = st.tabs(["Register", "Login", "Reset Password", "Update Email"])
 
 # Register
+# with tabs we can create multiple tabs on same page
 with tabs[0]:
     st.header("Register")
+    # we are initializing key parameter here so that later we can manipulate it using streamlit session
     name     = st.text_input("Name",     key="reg_name",  placeholder="John Doe")
     email    = st.text_input("Email",    key="reg_email", placeholder="example@example.com")
     password = st.text_input("Password", key="reg_pass",  type="password", placeholder="••••••••")

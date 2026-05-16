@@ -1,9 +1,10 @@
-import streamlit as st
+import streamlit as st # type: ignore
 from time import sleep
 
 
 def make_sidebar():
     with st.sidebar:
+        # If user is logged in then show authenticated sidebar
         if st.session_state.get("logged_in", False):
 
             st.title("Pre Feedback")
