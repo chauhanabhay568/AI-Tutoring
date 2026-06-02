@@ -9,7 +9,7 @@ config = dotenv_values()
 _DB_NAME = "ai_tutoring"
 _COLLECTION_NAME = "student_data"
 
-# Load URI from .env — never hardcode credentials in code
+# Load URI from 
 _uri = config.get("MONGODB_URI", "mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority")
 
 # FIX 1: Lazy connection variables
@@ -27,7 +27,12 @@ def _get_collection():
     """
     global _client, _students
     if _students is None:
-        _client = MongoClient(_uri, server_api=ServerApi("1"))
+        _client = MongoClient(
+                                _uri,
+                                server_api=ServerApi("1"),
+                                tls=True,
+                                tlsAllowInvalidCertificates=True
+                            )
         _students = _client[_DB_NAME][_COLLECTION_NAME]
     return _students
 

@@ -29,6 +29,9 @@ email = st.session_state.get("user_email")
 tabs = st.tabs(["View Profile", "Save Profile", "Update Profile"])
 
 # ── View ──────────────────────────────────────────────────────────────────────
+
+# using "with" creates a single block. Otherwise without "with"
+# whenever a user interacts with a widget, whole script re-runs.
 with tabs[0]:
     student = get_student_by_email(email)
     if student:
