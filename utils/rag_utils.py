@@ -62,7 +62,7 @@ def ingest_file_to_chroma(uploaded_file, embedding_model):
         embeddings=embeddings,
         metadatas=[{"chunk_id": i, "source": uploaded_file.name} for i in range(len(chunks))],
     )
-
+    # storing the collection in session state
     st.session_state.collection = collection
 
 

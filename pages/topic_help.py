@@ -21,14 +21,12 @@ config = dotenv_values()
 os.environ["OPENAI_API_KEY"] = config.get("OPENAI_API_KEY", "")
 
 # ── Cached resources ──────────────────────────────────────────────────────────
-"""
-Without @st.cache_resource:
-User types a message → script reruns → SentenceTransformer loads again
-→ downloads 90MB model again → takes 30 seconds → terrible experience
-With @st.cache_resource:
-First load → SentenceTransformer loads once → cached in memory
-User types a message → script reruns → uses cached model instantly
-"""
+# Without @st.cache_resource:
+#     User types a message → script reruns → SentenceTransformer loads again
+#     → downloads 90MB model again → takes 30 seconds → terrible experience
+# With @st.cache_resource:
+#     First load → SentenceTransformer loads once → cached in memory
+#     User types a message → script reruns → uses cached model instantly
 @st.cache_resource
 def load_embedding_model():
     return SentenceTransformer("all-MiniLM-L6-v2")
