@@ -15,6 +15,7 @@ A personalised AI-powered tutoring web application built with Streamlit. Student
 - [Usage Guide](#usage-guide)
 - [Admin Access](#admin-access)
 - [Known Limitations](#known-limitations)
+- [AI Output Evaluation](#ai-output-evaluation)
 
 ---
 
@@ -264,6 +265,69 @@ The admin account skips the student profile requirement and shows a data downloa
 - The RAG pipeline only uses the **most recently uploaded** document per session. Uploading a new file replaces the previous one in ChromaDB.
 - Quiz generation requires an active OpenAI API connection. If the API is unavailable, a fallback dummy quiz is loaded from `pages/dummyquiz.txt`.
 - The app is designed for **single-user sessions** — multiple users on the same machine may share the same ChromaDB session collection.
+
+---
+
+## AI Output Evaluation
+
+The `evaluation/` package uses DeepEval to evaluate saved RAG-chat and quiz outputs.
+It deliberately runs outside Streamlit so that the same test cases can be repeated
+when prompts, models, chunk sizes, or retrieval settings change.
+
+### Metrics
+
+RAG cases use answer relevancy, faithfulness, and contextual relevancy. Cases with
+an `expected_output` additionally use contextual precision and contextual recall.
+
+Quiz cases use four G-Eval rubrics: topic relevance, difficulty alignment, question
+quality, and factual/answer-key correctness.
+
+### Prepare the datasets
+
+Replace or extend these supplied examples with outputs from the application:
+
+- `evaluation/datasets/rag_cases.json`
+- `evaluation/datasets/quiz_cases.json`
+
+For RAG cases, preserve every retrieved chunk separately in `retrieval_context`.
+Do not join all chunks into one string. An `expected_output` is recommended because
+it enables the two reference-based retrieval metrics.
+
+For quiz cases, `actual_output` can be the generated JSON array directly. Describe
+the requested subject, topic, difficulty, learner level, focus, and question count
+in `input`. Add an expert-reviewed `expected_output` whenever possible.
+
+### Run evaluation
+
+Validate the datasets for free before making judge-model calls:
+
+```bash
+uv run python -m evaluation.run_evaluation --validate-only
+```
+
+Run all evaluations using the default judge model and threshold:
+
+```bash
+uv run python -m evaluation.run_evaluation --type all
+```
+
+Run one evaluation type or change experimental settings:
+
+```bash
+uv run python -m evaluation.run_evaluation --type rag --model gpt-4.1-mini --threshold 0.7
+uv run python -m evaluation.run_evaluation --type quiz --model gpt-4.1-mini --threshold 0.7
+```
+
+The runner reads `OPENAI_API_KEY` from `.env`. Set `DEEPEVAL_JUDGE_MODEL` there to
+change the default judge. Each paid run writes a detailed CSV and aggregate JSON
+report under `evaluation/results/`. Keep the dataset, judge model, threshold, and
+date alongside reported scores so experiments remain reproducible.
+
+Run the non-LLM tests with:
+
+```bash
+uv run pytest tests/test_evaluation.py -q
+```
 
 ---
 
