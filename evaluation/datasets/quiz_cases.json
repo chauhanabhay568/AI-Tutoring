@@ -1,0 +1,47 @@
+[
+  {
+    "id": "quiz_python_recursion_01",
+    "input": "Generate a 2-question beginner Python quiz about recursion. Difficulty: Easy. Focus: Conceptual. Each question needs four options and zero-based correct_answers indices.",
+    "actual_output": [
+      {
+        "question": "What is recursion in Python?",
+        "options": [
+          "A function calling itself",
+          "A loop that never ends",
+          "A way to import a module",
+          "A type of variable"
+        ],
+        "correct_answers": [0]
+      },
+      {
+        "question": "What is the purpose of a base case in a recursive function?",
+        "options": [
+          "To start an infinite loop",
+          "To stop the recursive calls",
+          "To rename the function",
+          "To import another function"
+        ],
+        "correct_answers": [1]
+      }
+    ],
+    "expected_output": "The quiz should contain exactly two clear, easy conceptual questions about Python recursion. It should test self-calls and the purpose of a base case, with four plausible options per question and correct zero-based answer indices."
+  },
+  {
+    "id": "quiz_python_lists_02",
+    "input": "Generate a 1-question beginner Python quiz about list mutability. Difficulty: Easy. Focus: Conceptual. Use four options and zero-based correct_answers indices.",
+    "actual_output": [
+      {
+        "question": "Which statement about Python lists is correct?",
+        "options": [
+          "Lists cannot change after creation",
+          "Lists are mutable and their items can be changed",
+          "Lists can only store numbers",
+          "Lists never preserve item order"
+        ],
+        "correct_answers": [1]
+      }
+    ],
+    "expected_output": "One easy conceptual question should establish that Python lists are mutable. It must have four options and identify the correct answer using a zero-based index."
+  }
+]
+

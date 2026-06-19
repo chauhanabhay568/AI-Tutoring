@@ -1,0 +1,22 @@
+[
+  {
+    "id": "rag_recursion_01",
+    "input": "What is recursion in Python and why is a base case needed?",
+    "actual_output": "Recursion is when a function calls itself. A base case stops the repeated calls, preventing infinite recursion.",
+    "expected_output": "Recursion is a technique in which a function calls itself. A base case defines when the recursion stops and prevents infinite calls.",
+    "retrieval_context": [
+      "A recursive function calls itself to solve smaller instances of a problem.",
+      "Every recursive algorithm needs a base case that stops further recursive calls; without one, recursion continues until the runtime limit is reached."
+    ]
+  },
+  {
+    "id": "rag_list_mutability_02",
+    "input": "Can a Python list be changed after it is created?",
+    "actual_output": "Yes. Python lists are mutable, so their elements can be added, removed, or replaced after creation.",
+    "expected_output": "Yes, lists are mutable and can be modified after creation.",
+    "retrieval_context": [
+      "Lists are mutable Python collections. Items may be replaced, appended, or removed after a list is created."
+    ]
+  }
+]
+

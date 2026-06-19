@@ -15,6 +15,7 @@ A personalised AI-powered tutoring web application built with Streamlit. Student
 - [Usage Guide](#usage-guide)
 - [Admin Access](#admin-access)
 - [Known Limitations](#known-limitations)
+- [Testing](#testing)
 - [AI Output Evaluation](#ai-output-evaluation)
 
 ---
@@ -268,6 +269,27 @@ The admin account skips the student profile requirement and shows a data downloa
 
 ---
 
+## Testing
+
+The project includes non-LLM unit tests for the reusable app logic and the
+DeepEval dataset/reporting helpers. These tests do not call OpenAI, MongoDB, or
+ChromaDB.
+
+Run the full unit-test suite with:
+
+```bash
+uv run pytest
+```
+
+Current coverage focuses on:
+
+- Quiz parsing and scoring helpers in `utils/quiz_utils.py`
+- RAG text extraction, prompt building, and retrieval helpers in `utils/rag_utils.py`
+- SQLite auth registration, login, reset, and email-update flows in `database/auth_db.py`
+- Evaluation dataset validation and report generation in `evaluation/`
+
+---
+
 ## AI Output Evaluation
 
 The `evaluation/` package uses DeepEval to evaluate saved RAG-chat and quiz outputs.
@@ -323,7 +345,7 @@ change the default judge. Each paid run writes a detailed CSV and aggregate JSON
 report under `evaluation/results/`. Keep the dataset, judge model, threshold, and
 date alongside reported scores so experiments remain reproducible.
 
-Run the non-LLM tests with:
+Run only the evaluation helper tests with:
 
 ```bash
 uv run pytest tests/test_evaluation.py -q
