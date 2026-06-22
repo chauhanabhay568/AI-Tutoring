@@ -1,7 +1,8 @@
 import json
 import re
 import streamlit as st
-import openai
+
+from utils.llm_client import LLMClient
 
 
 # ── Session state ─────────────────────────────────────────────────────────────
@@ -50,9 +51,9 @@ def load_dummy_quiz():
 
 # ── Quiz generation ───────────────────────────────────────────────────────────
 
-def generate_quiz(subject, topic, level, understanding, num_questions, focus):
+def generate_quiz(subject, topic, level, understanding, num_questions, focus, llm_client: LLMClient):
     """
-    Call GPT-4 to generate a JSON quiz based on the student's preferences.
+    Generate a JSON quiz based on the student's preferences.
     Returns the raw JSON string or None on failure.
     """
     prompt = (
@@ -67,8 +68,7 @@ def generate_quiz(subject, topic, level, understanding, num_questions, focus):
         f"Return ONLY the JSON array. No markdown, no explanation."
     )
     try:
-        response = openai.chat.completions.create(
-            model="gpt-4",
+        response = llm_client.complete(
             messages=[
                 {"role": "system", "content": "You are a quiz generator. Return only valid JSON."},
                 {"role": "user", "content": prompt},
@@ -122,8 +122,8 @@ def score_quiz(quiz_data, user_answers):
     return score, total, "\n".join(lines)
 
 
-def get_quiz_feedback(display_string, session_data, score_ratio):
-    """Call GPT-4 to generate personalised study recommendations after the quiz."""
+def get_quiz_feedback(display_string, session_data, score_ratio, llm_client: LLMClient):
+    """Generate personalised study recommendations after the quiz."""
     prompt = f"""
 The student completed a quiz:
 Subject: {session_data['quiz_subject']}
@@ -140,8 +140,7 @@ Give three personalised study recommendations based on their weak areas.
 Each recommendation must be a complete, actionable sentence.
 """
     try:
-        response = openai.chat.completions.create(
-            model="gpt-4",
+        response = llm_client.complete(
             messages=[
                 {"role": "system", "content": "You are a study coach providing personalised recommendations."},
                 {"role": "user", "content": prompt},

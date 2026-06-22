@@ -1,14 +1,15 @@
+import certifi
 import os
+os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+
 import streamlit as st
 import chromadb
 from chromadb.config import Settings
-from dotenv import dotenv_values
-from openai import OpenAI
-from sentence_transformers import SentenceTransformer
-
 from navigation import make_sidebar
 from database.student_db import get_student_by_email
 from utils.css_utils import load_css
+from utils.llm_client import build_llm_client, build_embedding_client
 from utils.rag_utils import (
     ingest_file_to_chroma,
     retrieve_context,
@@ -16,24 +17,16 @@ from utils.rag_utils import (
     mark_topic_form_submitted,
 )
 
-# ── Config ────────────────────────────────────────────────────────────────────
-config = dotenv_values()
-os.environ["OPENAI_API_KEY"] = config.get("OPENAI_API_KEY", "")
-
 # ── Cached resources ──────────────────────────────────────────────────────────
-# Without @st.cache_resource:
-#     User types a message → script reruns → SentenceTransformer loads again
-#     → downloads 90MB model again → takes 30 seconds → terrible experience
-# With @st.cache_resource:
-#     First load → SentenceTransformer loads once → cached in memory
-#     User types a message → script reruns → uses cached model instantly
+# @st.cache_resource ensures the embedding client (and any lazily-loaded
+# sentence-transformers fallback model) is constructed only once per session.
 @st.cache_resource
 def load_embedding_model():
-    return SentenceTransformer("all-MiniLM-L6-v2")
+    return build_embedding_client()
 
 @st.cache_resource
 def load_llm():
-    return OpenAI(api_key=config.get("OPENAI_API_KEY", ""))
+    return build_llm_client()
 
 # ── ChromaDB (one client per session) ────────────────────────────────────────
 if "chroma_client" not in st.session_state:
@@ -136,9 +129,11 @@ if st.session_state.get("topic_pref_submitted"):
             history += [{"role": m["role"], "content": m["content"]}
                         for m in st.session_state.messages[-5:]]
 
-            stream = llm.chat.completions.create(
-                model="gpt-3.5-turbo", messages=history, stream=True
-            )
-            response = st.write_stream(stream)
+            try:
+                stream = llm.stream(history)
+                response = st.write_stream(stream)
+            except Exception:
+                response = "Sorry, I couldn't generate a response. Please try again."
+                st.markdown(response)
 
         st.session_state.messages.append({"role": "assistant", "content": response})

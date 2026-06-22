@@ -54,7 +54,7 @@ def ingest_file_to_chroma(uploaded_file, embedding_model):
         st.session_state.chroma_client.delete_collection(col)
 
     collection = st.session_state.chroma_client.create_collection("session_documents")
-    embeddings = [embedding_model.encode(chunk).tolist() for chunk in chunks]
+    embeddings = [embedding_model.encode(chunk) for chunk in chunks]
 
     collection.add(
         ids=[f"doc_{uploaded_file.name}_{i}" for i in range(len(chunks))],
@@ -74,7 +74,7 @@ def retrieve_context(query, embedding_model, n_results=3):
     if "collection" not in st.session_state:
         return ""
 
-    query_embedding = embedding_model.encode(query).tolist()
+    query_embedding = embedding_model.encode(query)
     results = st.session_state.collection.query(
         query_embeddings=[query_embedding],
         n_results=n_results,
