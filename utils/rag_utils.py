@@ -51,7 +51,7 @@ def ingest_file_to_chroma(uploaded_file, embedding_model):
 
     # Clear old collections before creating a new one
     for col in st.session_state.chroma_client.list_collections():
-        st.session_state.chroma_client.delete_collection(col)
+        st.session_state.chroma_client.delete_collection(col.name)
 
     collection = st.session_state.chroma_client.create_collection("session_documents")
     embeddings = [embedding_model.encode(chunk).tolist() for chunk in chunks]
