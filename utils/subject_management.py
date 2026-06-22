@@ -6,6 +6,25 @@ from copy import deepcopy
 from typing import Any
 
 
+def parse_subjects(raw: Any) -> list[str]:
+    """Return a normalized list of subject names from raw stored input."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        items = raw.split(",")
+    elif isinstance(raw, (list, tuple, set)):
+        items = list(raw)
+    else:
+        return []
+
+    subjects: list[str] = []
+    for item in items:
+        subject = canonical_subject_name(item)
+        if subject:
+            subjects.append(subject)
+    return subjects
+
+
 def canonical_subject_name(name: Any) -> str:
     """Return the display form of a subject name with surrounding whitespace removed."""
     return str(name or "").strip()
@@ -20,21 +39,7 @@ def get_subject_list(profile: dict[str, Any] | None) -> list[str]:
     """Return the profile's subject list as trimmed display names."""
     if not profile:
         return []
-
-    raw_subjects = profile.get("subjects", [])
-    if isinstance(raw_subjects, str):
-        items = raw_subjects.split(",")
-    elif isinstance(raw_subjects, (list, tuple, set)):
-        items = list(raw_subjects)
-    else:
-        items = []
-
-    subjects: list[str] = []
-    for item in items:
-        subject = canonical_subject_name(item)
-        if subject:
-            subjects.append(subject)
-    return subjects
+    return parse_subjects(profile.get("subjects", []))
 
 
 def get_subject_details(profile: dict[str, Any] | None) -> dict[str, dict[str, Any]]:

@@ -1,20 +1,24 @@
 import io
-import streamlit as st
+from typing import Any
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
+
+from utils.subject_management import parse_subjects
 
 
 # ── Data helpers ──────────────────────────────────────────────────────────────
 
-def dataframe_to_csv(df):
+def dataframe_to_csv(df: pd.DataFrame) -> str:
     """Convert a DataFrame to a CSV string (for download buttons)."""
     output = io.StringIO()
     df.to_csv(output, index=False)
     return output.getvalue()
 
 
-def student_data_to_dataframe(students_data):
+def student_data_to_dataframe(students_data: dict[str, Any] | list[dict[str, Any]]) -> pd.DataFrame:
     """
     Flatten the nested student-data structure (one row per subject)
     and return a pandas DataFrame.
@@ -24,20 +28,22 @@ def student_data_to_dataframe(students_data):
 
     rows = []
     for student in students_data:
-        subjects = [s.strip() for s in student.get("subjects", "").split(",") if s.strip()]
+        subjects = parse_subjects(student.get("subjects", ""))
         subject_details = student.get("subject_details", {})
         if not subjects or not isinstance(subject_details, dict):
             continue
 
         for subject in subjects:
-            details = subject_details.get(subject)
-            if not isinstance(details, dict):
+            if subject not in subject_details:
+                continue
+            details = subject_details.get(subject, {})
+            if not isinstance(details, dict) or not details:
                 continue
             rows.append({
-                "email": student["email"],
-                "age": student["age"],
-                "grade_level": student["grade_level"],
-                "preferred_language": student["preferred_language"],
+                "email": student.get("email", ""),
+                "age": student.get("age", ""),
+                "grade_level": student.get("grade_level", ""),
+                "preferred_language": student.get("preferred_language", ""),
                 "subject": subject,
                 "understanding_level": details.get("understanding_level", ""),
                 "past_learning_methods": details.get("past_learning_methods", ""),
@@ -59,7 +65,7 @@ def student_data_to_dataframe(students_data):
     return pd.DataFrame(rows, columns=columns)
 
 
-def validate_subject_data(subject_data):
+def validate_subject_data(subject_data: dict[str, dict[str, Any]]) -> str | None:
     """
     Check that every field in subject_data is filled in.
     Returns an HTML error string, or None if everything is valid.
@@ -74,7 +80,7 @@ def validate_subject_data(subject_data):
 
 # ── Chart builders ────────────────────────────────────────────────────────────
 
-def plot_confidence_gauge(student_row):
+def plot_confidence_gauge(student_row: pd.Series) -> go.Figure:
     """Gauge chart showing confidence level for a single subject."""
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
@@ -93,7 +99,7 @@ def plot_confidence_gauge(student_row):
     return fig
 
 
-def plot_confidence_bar(df):
+def plot_confidence_bar(df: pd.DataFrame) -> go.Figure:
     """Grouped bar chart: confidence level per subject, coloured by understanding level."""
     fig = px.bar(
         df,
@@ -108,12 +114,12 @@ def plot_confidence_bar(df):
     return fig
 
 
-def plot_learning_methods_pie(df):
+def plot_learning_methods_pie(df: pd.DataFrame) -> go.Figure:
     """Donut chart of past learning methods."""
     return px.pie(df, names="past_learning_methods", hole=0.3)
 
 
-def display_learning_goals(df):
+def display_learning_goals(df: pd.DataFrame) -> None:
     """Render learning goals as simple markdown cards."""
     for _, row in df.iterrows():
         st.markdown(f"**Subject:** {row['subject']}  \n**Learning Goal:** {row['learning_goals']}")
@@ -121,7 +127,7 @@ def display_learning_goals(df):
 
 # ── Dynamic form helpers ──────────────────────────────────────────────────────
 
-def render_subject_fields(subjects_list, key_prefix=""):
+def render_subject_fields(subjects_list: list[str], key_prefix: str = "") -> dict[str, dict[str, Any]]:
     """
     Render input widgets for each subject in subjects_list.
     Returns a dict keyed by subject name.
@@ -154,12 +160,12 @@ def render_subject_fields(subjects_list, key_prefix=""):
     return subject_data
 
 
-def render_subject_fields_for_update(student_data, key_prefix=""):
+def render_subject_fields_for_update(student_data: dict[str, Any], key_prefix: str = "") -> dict[str, dict[str, Any]]:
     """
     Render pre-filled input widgets for updating existing subject data.
     Returns the updated subject_data dict.
     """
-    subject_data = student_data.get("subject_details", {})
+    subject_data = dict(student_data.get("subject_details", {}))
 
     for subject, data in subject_data.items():
         widget_key = f"{key_prefix}{subject}".replace(" ", "_")

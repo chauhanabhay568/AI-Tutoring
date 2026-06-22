@@ -1,10 +1,16 @@
+from __future__ import annotations
+
+import logging
 import sqlite3
+
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = "database_files/survey_traditional.db"
 
 
-def init_survey_traditional_db():
+def init_survey_traditional_db() -> None:
     """Create the traditional-teaching survey table if it does not exist."""
     try:
         with sqlite3.connect(DB_PATH) as conn:
@@ -24,11 +30,11 @@ def init_survey_traditional_db():
                 )
             """)
             conn.commit()
-    except sqlite3.Error as e:
-        print(f"[survey_traditional_db] init error: {e}")
+    except sqlite3.Error as exc:
+        logger.exception("Init error: %s", exc)
 
 
-def insert_survey_response(data):
+def insert_survey_response(data: dict[str, object]) -> None:
     """Insert one survey response. `data` is the dict from the page."""
     questions = [
         "Traditional teaching methods allow for personalized learning tailored to my needs.",
@@ -61,15 +67,15 @@ def insert_survey_response(data):
                 ),
             )
             conn.commit()
-    except sqlite3.Error as e:
-        print(f"[survey_traditional_db] insert error: {e}")
+    except sqlite3.Error as exc:
+        logger.exception("Insert error: %s", exc)
 
 
-def get_all_responses():
+def get_all_responses() -> pd.DataFrame:
     """Return all survey responses as a DataFrame."""
     try:
         with sqlite3.connect(DB_PATH) as conn:
             return pd.read_sql_query("SELECT * FROM survey_responses", conn)
-    except sqlite3.Error as e:
-        print(f"[survey_traditional_db] fetch error: {e}")
+    except sqlite3.Error as exc:
+        logger.exception("Fetch error: %s", exc)
         return pd.DataFrame()

@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import streamlit as st
 
 
-def load_css(file_name):
+def load_css(file_name: str) -> None:
     """Load a local CSS file into the Streamlit app."""
     with open(file_name) as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
-def load_bootstrap():
+def load_bootstrap() -> None:
     """Inject Bootstrap 5 CDN into the Streamlit app."""
     st.markdown(
         """

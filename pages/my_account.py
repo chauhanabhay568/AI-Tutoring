@@ -27,6 +27,7 @@ from utils.subject_management import (
     build_update_subject_updates,
     canonical_subject_name,
     get_subject_list,
+    parse_subjects,
     subject_exists,
 )
 
@@ -92,24 +93,27 @@ with tabs[1]:
 
         subject_data = {}
         if age and grade_level and preferred_language and subjects_input:
-            subjects_list = [s.strip() for s in subjects_input.split(",") if s.strip()]
+            subjects_list = parse_subjects(subjects_input)
             subject_data = render_subject_fields(subjects_list, key_prefix="save_")
 
         if st.form_submit_button("Save"):
             if not subjects_input:
                 st.error("Please enter at least one subject.")
+            elif not parse_subjects(subjects_input):
+                st.error("Please enter at least one valid subject name.")
             else:
                 error = validate_subject_data(subject_data)
                 if error:
                     st.markdown(f"<p style='color:red'>{error}</p>", unsafe_allow_html=True)
                 else:
+                    normalized_subjects = parse_subjects(subjects_input)
                     result = save_student_data(
                         {
                             "email": email,
                             "age": age,
                             "grade_level": grade_level,
                             "preferred_language": preferred_language,
-                            "subjects": subjects_input,
+                            "subjects": ", ".join(normalized_subjects),
                             "subject_details": subject_data,
                         }
                     )

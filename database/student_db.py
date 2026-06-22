@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+import certifi
 import json
+import logging
 import os
 import sqlite3
+from typing import Any
 
 from dotenv import dotenv_values
+
+logger = logging.getLogger(__name__)
 
 config = dotenv_values()
 DB_PATH = config.get("SQLITE_STUDENT_DB_PATH", "database_files/student_data.db")
@@ -10,7 +17,7 @@ DB_PATH = config.get("SQLITE_STUDENT_DB_PATH", "database_files/student_data.db")
 
 # ── Database setup ────────────────────────────────────────────────────────────
 
-def init_student_db():
+def init_student_db() -> None:
     """Create the database folder and student_profiles table if they do not exist."""
     db_dir = os.path.dirname(DB_PATH)
     if db_dir:
@@ -33,45 +40,59 @@ def _normalise(email: str) -> str:
     return email.strip().lower()
 
 
-def _row_to_dict(email: str, data_json: str) -> dict:
-    return {"email": email, **json.loads(data_json)}
+def _row_to_dict(email: str, data_json: str) -> dict[str, Any]:
+    data = json.loads(data_json)
+    return {"email": email, **data}
+
+
+def _load_profile(conn: sqlite3.Connection, email: str) -> dict[str, Any] | None:
+    row = conn.execute(
+        "SELECT data FROM student_profiles WHERE email = ?",
+        (email,),
+    ).fetchone()
+    if row is None:
+        return None
+    return _row_to_dict(email, row[0])
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def save_student_data(data: dict) -> str:
+def save_student_data(data: dict[str, Any]) -> str:
     """Insert a new student profile. Returns a status message string."""
     data = dict(data)
     email = _normalise(data.pop("email", ""))
     if not email:
         return "Error saving data: email is required."
     try:
+        payload = json.dumps(data)
+    except (TypeError, ValueError) as exc:
+        logger.exception("Error serializing data for save: %s", exc)
+        return "Error saving data."
+
+    try:
         with sqlite3.connect(DB_PATH) as conn:
             conn.execute(
                 "INSERT INTO student_profiles (email, data) VALUES (?, ?)",
-                (email, json.dumps(data)),
+                (email, payload),
             )
             conn.commit()
         return "Data saved successfully."
     except sqlite3.IntegrityError:
         return "A profile for this email already exists."
-    except Exception as e:
-        return f"Error saving data: {e}"
+    except sqlite3.Error as exc:
+        logger.exception("Error saving data: %s", exc)
+        return "Error saving data."
 
 
-def get_student_by_email(email: str) -> dict | None:
+def get_student_by_email(email: str) -> dict[str, Any] | None:
     """Return the student profile dict, or None if not found."""
     email = _normalise(email)
     try:
         with sqlite3.connect(DB_PATH) as conn:
-            row = conn.execute(
-                "SELECT data FROM student_profiles WHERE email = ?", (email,)
-            ).fetchone()
-        if row is None:
-            return None
-        return _row_to_dict(email, row[0])
-    except Exception as e:
-        print(f"[student_db] fetch error: {e}")
+            profile = _load_profile(conn, email)
+        return profile
+    except (sqlite3.Error, json.JSONDecodeError, TypeError, ValueError) as exc:
+        logger.exception("Fetch error: %s", exc)
         return None
 
 
@@ -84,33 +105,33 @@ def student_exists(email: str) -> bool:
                 "SELECT COUNT(*) FROM student_profiles WHERE email = ?", (email,)
             ).fetchone()[0]
         return count > 0
-    except Exception:
+    except sqlite3.Error as exc:
+        logger.exception("Exists check failed: %s", exc)
         return False
 
 
-def update_student_data(email: str, updated_fields: dict) -> str:
+def update_student_data(email: str, updated_fields: dict[str, Any]) -> str:
     """Merge updated_fields into the existing profile. Returns a status message."""
     email = _normalise(email)
     try:
         with sqlite3.connect(DB_PATH) as conn:
-            row = conn.execute(
-                "SELECT data FROM student_profiles WHERE email = ?", (email,)
-            ).fetchone()
-            if row is None:
+            existing = _load_profile(conn, email)
+            if existing is None:
                 return "No profile found for this email."
-            existing = json.loads(row[0])
             existing.update(updated_fields)
+            payload = json.dumps(existing)
             conn.execute(
                 "UPDATE student_profiles SET data = ? WHERE email = ?",
-                (json.dumps(existing), email),
+                (payload, email),
             )
             conn.commit()
         return "Data updated successfully."
-    except Exception as e:
-        return f"Error updating data: {e}"
+    except (sqlite3.Error, json.JSONDecodeError, TypeError, ValueError) as exc:
+        logger.exception("Error updating data: %s", exc)
+        return "Error updating data."
 
 
-def get_all_students() -> list[dict]:
+def get_all_students() -> list[dict[str, Any]]:
     """Return all student profiles as a list of dicts."""
     try:
         with sqlite3.connect(DB_PATH) as conn:
@@ -118,8 +139,8 @@ def get_all_students() -> list[dict]:
                 "SELECT email, data FROM student_profiles"
             ).fetchall()
         return [_row_to_dict(r[0], r[1]) for r in rows]
-    except Exception as e:
-        print(f"[student_db] fetch_all error: {e}")
+    except (sqlite3.Error, json.JSONDecodeError, TypeError, ValueError) as exc:
+        logger.exception("Fetch-all error: %s", exc)
         return []
 
 
@@ -135,18 +156,19 @@ def delete_student(email: str) -> str:
         if result.rowcount == 0:
             return "No profile found for this email."
         return "Profile deleted successfully."
-    except Exception as e:
-        return f"Error deleting profile: {e}"
+    except sqlite3.Error as exc:
+        logger.exception("Error deleting profile: %s", exc)
+        return "Error deleting profile."
 
 
-def migrate_from_mongodb(mongodb_uri: str | None = None) -> dict:
+def migrate_from_mongodb(mongodb_uri: str | None = None) -> dict[str, Any]:
     """
     Copy all documents from a MongoDB student collection into SQLite.
     Existing local records are preserved (INSERT OR IGNORE).
     Returns {"migrated": int, "skipped": int, "failed": int, "errors": list[str]}.
     """
     uri = mongodb_uri or config.get("MONGODB_URI", "")
-    result: dict = {"migrated": 0, "skipped": 0, "failed": 0, "errors": []}
+    result: dict[str, Any] = {"migrated": 0, "skipped": 0, "failed": 0, "errors": []}
 
     if not uri:
         result["errors"].append(
@@ -156,14 +178,26 @@ def migrate_from_mongodb(mongodb_uri: str | None = None) -> dict:
 
     try:
         from pymongo import MongoClient
+        from pymongo.errors import PyMongoError
         from pymongo.server_api import ServerApi
+    except ImportError as exc:
+        logger.exception("MongoDB client import failed: %s", exc)
+        result["errors"].append(f"MongoDB import failed: {exc}")
+        return result
 
-        client = MongoClient(uri, server_api=ServerApi("1"), tls=True, tlsAllowInvalidCertificates=True)
+    try:
+        client = MongoClient(
+            uri,
+            server_api=ServerApi("1"),
+            tls=True,
+            tlsCAFile=certifi.where(),
+        )
         client.admin.command("ping")
         collection = client["ai_tutoring"]["student_data"]
         docs = list(collection.find({}, {"_id": 0}))
-    except Exception as e:
-        result["errors"].append(f"MongoDB connection failed: {e}")
+    except PyMongoError as exc:
+        logger.exception("MongoDB connection failed: %s", exc)
+        result["errors"].append(f"MongoDB connection failed: {exc}")
         return result
 
     with sqlite3.connect(DB_PATH) as conn:
@@ -183,9 +217,10 @@ def migrate_from_mongodb(mongodb_uri: str | None = None) -> dict:
                     result["migrated"] += 1
                 else:
                     result["skipped"] += 1
-            except Exception as e:
+            except (sqlite3.Error, TypeError, ValueError, json.JSONDecodeError) as exc:
                 result["failed"] += 1
-                result["errors"].append(f"{email}: {e}")
+                result["errors"].append(f"{email}: {exc}")
+                logger.exception("Migration failed for %s: %s", email, exc)
         conn.commit()
 
     return result

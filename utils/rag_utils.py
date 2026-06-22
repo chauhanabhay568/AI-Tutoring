@@ -1,4 +1,8 @@
-import streamlit as st
+from __future__ import annotations
+
+import logging
+from typing import Any
+
 import fitz  # PyMuPDF
 
 try:
@@ -6,23 +10,25 @@ try:
 except ImportError:
     from langchain.text_splitter import RecursiveCharacterTextSplitter
 
+logger = logging.getLogger(__name__)
+
 
 # ── Text extraction ──────────────────────────────────────────────────────────
 
-def extract_text_from_pdf(uploaded_file):
+def extract_text_from_pdf(uploaded_file: Any) -> str:
     """Extract plain text from an uploaded PDF file."""
     with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
         return "\n".join(page.get_text() for page in doc)
 
 
-def extract_text_from_txt(uploaded_file):
+def extract_text_from_txt(uploaded_file: Any) -> str:
     """Decode and return text from an uploaded TXT file."""
     return uploaded_file.read().decode("utf-8").strip()
 
 
 # ── Chunking ─────────────────────────────────────────────────────────────────
 
-def chunk_text(text, chunk_size=500, overlap=50):
+def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
     """Split text into overlapping chunks."""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=overlap
@@ -32,11 +38,21 @@ def chunk_text(text, chunk_size=500, overlap=50):
 
 # ── ChromaDB ingestion ────────────────────────────────────────────────────────
 
-def ingest_file_to_chroma(uploaded_file, embedding_model):
+def ingest_file_to_chroma(
+    uploaded_file: Any,
+    embedding_model: Any | None,
+    chroma_client: Any | None = None,
+) -> Any | None:
     """
     Extract text from an uploaded file, chunk it, embed it,
     and store everything in a fresh ChromaDB collection.
     """
+    if embedding_model is None:
+        logger.warning("Skipping Chroma ingestion because no embedding model is available.")
+        return None
+    if chroma_client is None:
+        raise ValueError("chroma_client is required for Chroma ingestion.")
+
     file_type = uploaded_file.type
 
     if file_type == "application/pdf":
@@ -44,16 +60,14 @@ def ingest_file_to_chroma(uploaded_file, embedding_model):
     elif file_type == "text/plain":
         text = extract_text_from_txt(uploaded_file)
     else:
-        st.error("Unsupported file format. Please upload a PDF or TXT file.")
-        return
+        raise ValueError("Unsupported file format. Please upload a PDF or TXT file.")
 
     chunks = chunk_text(text)
 
-    # Clear old collections before creating a new one
-    for col in st.session_state.chroma_client.list_collections():
-        st.session_state.chroma_client.delete_collection(col)
+    for col in chroma_client.list_collections():
+        chroma_client.delete_collection(col)
 
-    collection = st.session_state.chroma_client.create_collection("session_documents")
+    collection = chroma_client.create_collection("session_documents")
     embeddings = [embedding_model.encode(chunk) for chunk in chunks]
 
     collection.add(
@@ -62,30 +76,38 @@ def ingest_file_to_chroma(uploaded_file, embedding_model):
         embeddings=embeddings,
         metadatas=[{"chunk_id": i, "source": uploaded_file.name} for i in range(len(chunks))],
     )
-    # storing the collection in session state
-    st.session_state.collection = collection
+    return collection
 
 
-def retrieve_context(query, embedding_model, n_results=3):
+def retrieve_context(
+    query: str,
+    embedding_model: Any | None,
+    collection: Any | None = None,
+    n_results: int = 3,
+) -> str:
     """
     Embed a query and return the top-n most relevant chunks
     from the current ChromaDB collection.
     """
-    if "collection" not in st.session_state:
+    if not query or embedding_model is None or collection is None:
         return ""
 
-    query_embedding = embedding_model.encode(query)
-    results = st.session_state.collection.query(
-        query_embeddings=[query_embedding],
-        n_results=n_results,
-    )
-    chunks = results.get("documents", [[]])[0]
-    return "\n\n".join(chunks)
+    try:
+        query_embedding = embedding_model.encode(query)
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=n_results,
+        )
+        chunks = results.get("documents", [[]])[0]
+        return "\n\n".join(chunks)
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        logger.exception("Context retrieval failed: %s", exc)
+        return ""
 
 
 # ── Prompt building ───────────────────────────────────────────────────────────
 
-def build_system_prompt(student_prefs):
+def build_system_prompt(student_prefs: dict[str, Any]) -> str:
     """
     Build a personalised system prompt from the student's preferences
     and the topic-help form data.
@@ -133,6 +155,6 @@ Provide responses that are:
 
 # ── Streamlit helpers ─────────────────────────────────────────────────────────
 
-def mark_topic_form_submitted():
-    """Callback for the topic-help form submit button."""
-    st.session_state.topic_pref_submitted = True
+def mark_topic_form_submitted() -> str:
+    """Return the session key used by the topic-help form submit logic."""
+    return "topic_pref_submitted"

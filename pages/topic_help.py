@@ -1,21 +1,19 @@
 import certifi
 import os
+
 os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
 os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
-import streamlit as st
 import chromadb
+import streamlit as st
 from chromadb.config import Settings
-from navigation import make_sidebar
+
 from database.student_db import get_student_by_email
+from navigation import make_sidebar
 from utils.css_utils import load_css
-from utils.llm_client import build_llm_client, build_embedding_client
-from utils.rag_utils import (
-    ingest_file_to_chroma,
-    retrieve_context,
-    build_system_prompt,
-    mark_topic_form_submitted,
-)
+from utils.llm_client import build_embedding_client, build_llm_client
+from utils.rag_utils import build_system_prompt, ingest_file_to_chroma, retrieve_context
+from utils.subject_management import get_subject_list
 
 # ── Cached resources ──────────────────────────────────────────────────────────
 # @st.cache_resource ensures the embedding client (and any lazily-loaded
@@ -24,9 +22,11 @@ from utils.rag_utils import (
 def load_embedding_model():
     return build_embedding_client()
 
+
 @st.cache_resource
 def load_llm():
     return build_llm_client()
+
 
 # ── ChromaDB (one client per session) ────────────────────────────────────────
 if "chroma_client" not in st.session_state:
@@ -51,6 +51,11 @@ if not student:
     st.error("Please complete your profile in My Account before using Topic Help.")
     st.stop()
 
+subjects = get_subject_list(student)
+if not subjects:
+    st.info("No subjects have been saved yet. Please add at least one subject in My Account before using Topic Help.")
+    st.stop()
+
 # ── Preference form ───────────────────────────────────────────────────────────
 st.header("Topic Assistance")
 st.write("Fill in the details below to get personalised help.")
@@ -60,7 +65,7 @@ with st.form("topic_form"):
     col1, col2, col3 = st.columns([1, 2, 2])
 
     with col1:
-        subject = st.selectbox("Subject", [s.strip() for s in student["subjects"].split(",")])
+        subject = st.selectbox("Subject", subjects)
     with col2:
         preferred_depth = st.selectbox("Depth of Coverage", ["Beginner", "Intermediate", "Advanced"])
     with col3:
@@ -71,12 +76,22 @@ with st.form("topic_form"):
 
     col4, col5 = st.columns(2)
     with col4:
-        specific_subtopics = st.text_area("Specific Subtopics", placeholder="e.g. recursion, sorting")
+        specific_subtopics = st.text_area(
+            "Specific Subtopics",
+            placeholder="e.g. recursion, sorting",
+            max_chars=1000,
+        )
     with col5:
         previous_experience = st.radio("Previous Experience?", ["No", "Yes", "Partially"])
 
     uploaded_file = st.file_uploader("Upload reference document (optional)", type=["pdf", "txt"])
-    st.form_submit_button("Submit", on_click=mark_topic_form_submitted)
+    submitted = st.form_submit_button("Submit")
+
+if submitted:
+    if len(specific_subtopics) > 1000:
+        st.error("Specific subtopics must be 1000 characters or fewer.")
+    else:
+        st.session_state.topic_pref_submitted = True
 
 # ── Chat ──────────────────────────────────────────────────────────────────────
 if "messages" not in st.session_state:
@@ -85,7 +100,10 @@ if "messages" not in st.session_state:
 llm = load_llm()
 
 if st.session_state.get("topic_pref_submitted"):
-    subject_details = student["subject_details"].get(subject, {})
+    subject_details_map = student.get("subject_details", {})
+    if not isinstance(subject_details_map, dict):
+        subject_details_map = {}
+    subject_details = subject_details_map.get(subject, {})
 
     student_prefs = {
         "age": student.get("age"),
@@ -105,7 +123,20 @@ if st.session_state.get("topic_pref_submitted"):
     # Ingest uploaded file once
     if previous_experience == "Yes" and uploaded_file:
         with st.spinner("Processing document…"):
-            ingest_file_to_chroma(uploaded_file, embedding_model)
+            if embedding_model is None:
+                st.info("Document retrieval is unavailable right now, so your chat will continue without uploaded context.")
+            else:
+                try:
+                    collection = ingest_file_to_chroma(
+                        uploaded_file,
+                        embedding_model,
+                        st.session_state.chroma_client,
+                    )
+                except ValueError as exc:
+                    st.error(str(exc))
+                else:
+                    if collection is not None:
+                        st.session_state.collection = collection
 
     system_prompt = build_system_prompt(student_prefs)
 
@@ -114,26 +145,33 @@ if st.session_state.get("topic_pref_submitted"):
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Ask me anything…"):
-        context = ""
-        if previous_experience == "Yes" and uploaded_file:
-            context = retrieve_context(prompt, embedding_model)
+    if prompt := st.chat_input("Ask me anything…", max_chars=1000):
+        if len(prompt) > 1000:
+            st.error("Messages must be 1000 characters or fewer.")
+        else:
+            context = ""
+            if previous_experience == "Yes" and uploaded_file:
+                context = retrieve_context(
+                    prompt,
+                    embedding_model,
+                    st.session_state.get("collection"),
+                )
 
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
 
-        with st.chat_message("assistant"):
-            full_prompt = system_prompt + (f"\n\nContext:\n{context}" if context else "")
-            history = [{"role": "system", "content": full_prompt}]
-            history += [{"role": m["role"], "content": m["content"]}
-                        for m in st.session_state.messages[-5:]]
+            with st.chat_message("assistant"):
+                full_prompt = system_prompt + (f"\n\nContext:\n{context}" if context else "")
+                history = [{"role": "system", "content": full_prompt}]
+                history += [{"role": m["role"], "content": m["content"]}
+                            for m in st.session_state.messages[-5:]]
 
-            try:
-                stream = llm.stream(history)
-                response = st.write_stream(stream)
-            except Exception:
-                response = "Sorry, I couldn't generate a response. Please try again."
-                st.markdown(response)
+                try:
+                    stream = llm.stream(history)
+                    response = st.write_stream(stream)
+                except Exception:
+                    response = "Sorry, I couldn't generate a response. Please try again."
+                    st.markdown(response)
 
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.messages.append({"role": "assistant", "content": response})

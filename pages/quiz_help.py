@@ -5,6 +5,7 @@ from navigation import make_sidebar
 from database.student_db import get_student_by_email
 from utils.css_utils import load_css
 from utils.llm_client import build_llm_client
+from utils.subject_management import get_subject_list
 from utils.quiz_utils import (
     init_quiz_session_state,
     clear_quiz_session_state,
@@ -25,7 +26,7 @@ def load_llm():
 
 make_sidebar()
 load_css("styles/style.css")
-init_quiz_session_state()
+init_quiz_session_state(st.session_state)
 
 dummy_quiz_raw = load_dummy_quiz()
 
@@ -39,6 +40,11 @@ if not student:
 
 llm_client = load_llm()
 
+subjects = get_subject_list(student)
+if not subjects:
+    st.info("No subjects have been saved yet. Please add at least one subject in My Account before using Quiz Help.")
+    st.stop()
+
 # ── Preference form ───────────────────────────────────────────────────────────
 st.header("Quiz Preferences")
 st.write("Fill in the details below to generate a personalised quiz.")
@@ -48,9 +54,9 @@ with st.form("quiz_form"):
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        subject = st.selectbox("Subject", [s.strip() for s in student["subjects"].split(",")])
+        subject = st.selectbox("Subject", subjects)
     with col2:
-        topic = st.text_input("Subtopic", placeholder="e.g. Algebra")
+        topic = st.text_input("Subtopic", placeholder="e.g. Algebra", max_chars=1000)
     with col3:
         level = st.selectbox("Difficulty", ["Easy", "Medium", "Hard"])
 
@@ -65,16 +71,19 @@ with st.form("quiz_form"):
     submitted = st.form_submit_button("Generate Quiz")
 
 if submitted:
-    st.session_state.update({
-        "quiz_form_submitted": True,
-        "quiz_subject": subject,
-        "quiz_topic": topic,
-        "quiz_level": level,
-        "quiz_understanding": understanding,
-        "quiz_num_questions": num_questions,
-        "quiz_focus": focus,
-    })
-    st.rerun()
+    if len(topic) > 1000:
+        st.error("Subtopic must be 1000 characters or fewer.")
+    else:
+        st.session_state.update({
+            "quiz_form_submitted": True,
+            "quiz_subject": subject,
+            "quiz_topic": topic,
+            "quiz_level": level,
+            "quiz_understanding": understanding,
+            "quiz_num_questions": num_questions,
+            "quiz_focus": focus,
+        })
+        st.rerun()
 
 # ── Quiz rendering ────────────────────────────────────────────────────────────
 ready = (
@@ -109,31 +118,34 @@ if ready:
     else:
         raw = st.session_state.quiz_raw_response
 
-    if raw:
-        placeholder.empty()
-        quiz_data = parse_quiz_json(raw, dummy_quiz_raw)
-        st.header("Quiz")
+    if raw is None:
+        st.warning("Quiz generation failed. Showing a fallback quiz instead.")
+        raw = dummy_quiz_raw
 
-        user_answers = {}
-        with st.form("quiz_answers"):
-            for idx, q in enumerate(quiz_data):
-                st.write(f"**Q{idx + 1}: {q['question']}**")
-                if len(q["correct_answers"]) > 1:
-                    user_answers[idx] = st.multiselect(
-                        f"Select all correct answers for Q{idx + 1}:", q["options"],
-                        key=f"q_{idx}",
-                    )
-                else:
-                    user_answers[idx] = st.radio(
-                        f"Select the correct answer for Q{idx + 1}:", q["options"],
-                        key=f"q_{idx}",
-                    )
+    placeholder.empty()
+    quiz_data = parse_quiz_json(raw, dummy_quiz_raw)
+    st.header("Quiz")
 
-            if st.form_submit_button("Submit Quiz"):
-                st.session_state.quiz_result_submitted = True
-                st.session_state.quiz_data         = quiz_data
-                st.session_state.quiz_user_answers = user_answers
-                st.rerun()
+    user_answers = {}
+    with st.form("quiz_answers"):
+        for idx, q in enumerate(quiz_data):
+            st.write(f"**Q{idx + 1}: {q['question']}**")
+            if len(q["correct_answers"]) > 1:
+                user_answers[idx] = st.multiselect(
+                    f"Select all correct answers for Q{idx + 1}:", q["options"],
+                    key=f"q_{idx}",
+                )
+            else:
+                user_answers[idx] = st.radio(
+                    f"Select the correct answer for Q{idx + 1}:", q["options"],
+                    key=f"q_{idx}",
+                )
+
+        if st.form_submit_button("Submit Quiz"):
+            st.session_state.quiz_result_submitted = True
+            st.session_state.quiz_data         = quiz_data
+            st.session_state.quiz_user_answers = user_answers
+            st.rerun()
 
 # ── Results ───────────────────────────────────────────────────────────────────
 if st.session_state.quiz_result_submitted:
@@ -161,4 +173,4 @@ if st.session_state.quiz_result_submitted:
         with st.spinner("Generating feedback…"):
             st.write(get_quiz_feedback(display_string, st.session_state, score / total, llm_client))
 
-    clear_quiz_session_state()
+    clear_quiz_session_state(st.session_state)

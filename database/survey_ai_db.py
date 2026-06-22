@@ -1,10 +1,16 @@
+from __future__ import annotations
+
+import logging
 import sqlite3
+
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = "database_files/survey_ai.db"
 
 
-def init_survey_ai_db():
+def init_survey_ai_db() -> None:
     """Create the AI-tutoring survey table if it does not exist."""
     try:
         with sqlite3.connect(DB_PATH) as conn:
@@ -29,11 +35,11 @@ def init_survey_ai_db():
                 )
             """)
             conn.commit()
-    except sqlite3.Error as e:
-        print(f"[survey_ai_db] init error: {e}")
+    except sqlite3.Error as exc:
+        logger.exception("Init error: %s", exc)
 
 
-def insert_survey_response(data_tuple):
+def insert_survey_response(data_tuple: tuple[object, ...]) -> None:
     """Insert one row. `data_tuple` must match the column order above (excluding id)."""
     try:
         with sqlite3.connect(DB_PATH) as conn:
@@ -58,15 +64,15 @@ def insert_survey_response(data_tuple):
                 data_tuple,
             )
             conn.commit()
-    except sqlite3.Error as e:
-        print(f"[survey_ai_db] insert error: {e}")
+    except sqlite3.Error as exc:
+        logger.exception("Insert error: %s", exc)
 
 
-def get_all_responses():
+def get_all_responses() -> pd.DataFrame:
     """Return all survey responses as a DataFrame."""
     try:
         with sqlite3.connect(DB_PATH) as conn:
             return pd.read_sql_query("SELECT * FROM survey_responses", conn)
-    except sqlite3.Error as e:
-        print(f"[survey_ai_db] fetch error: {e}")
+    except sqlite3.Error as exc:
+        logger.exception("Fetch error: %s", exc)
         return pd.DataFrame()

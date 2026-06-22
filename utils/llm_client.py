@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import openai
 from dotenv import dotenv_values
@@ -37,7 +38,7 @@ class LLMClient:
         self._fallback = fallback
         self.fallback_model = fallback_model
 
-    def complete(self, messages: list[dict], **kwargs):
+    def complete(self, messages: list[dict], **kwargs) -> Any:
         """Non-streaming completion with automatic OpenAI fallback on provider error."""
         try:
             return self.primary.chat.completions.create(
@@ -50,7 +51,7 @@ class LLMClient:
                 model=self.fallback_model, messages=messages, **kwargs
             )
 
-    def stream(self, messages: list[dict], **kwargs):
+    def stream(self, messages: list[dict], **kwargs) -> Any:
         """Streaming completion against the primary provider. Caller handles errors."""
         return self.primary.chat.completions.create(
             model=self.model, messages=messages, stream=True, **kwargs
