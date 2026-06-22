@@ -24,21 +24,39 @@ def student_data_to_dataframe(students_data):
 
     rows = []
     for student in students_data:
-        for subject in [s.strip() for s in student["subjects"].split(",")]:
-            details = student["subject_details"][subject]
+        subjects = [s.strip() for s in student.get("subjects", "").split(",") if s.strip()]
+        subject_details = student.get("subject_details", {})
+        if not subjects or not isinstance(subject_details, dict):
+            continue
+
+        for subject in subjects:
+            details = subject_details.get(subject)
+            if not isinstance(details, dict):
+                continue
             rows.append({
                 "email": student["email"],
                 "age": student["age"],
                 "grade_level": student["grade_level"],
                 "preferred_language": student["preferred_language"],
                 "subject": subject,
-                "understanding_level": details["understanding_level"],
-                "past_learning_methods": details["past_learning_methods"],
-                "confidence_level": details["confidence_level"],
-                "learning_goals": details["learning_goals"],
+                "understanding_level": details.get("understanding_level", ""),
+                "past_learning_methods": details.get("past_learning_methods", ""),
+                "confidence_level": details.get("confidence_level", 0),
+                "learning_goals": details.get("learning_goals", ""),
             })
 
-    return pd.DataFrame(rows)
+    columns = [
+        "email",
+        "age",
+        "grade_level",
+        "preferred_language",
+        "subject",
+        "understanding_level",
+        "past_learning_methods",
+        "confidence_level",
+        "learning_goals",
+    ]
+    return pd.DataFrame(rows, columns=columns)
 
 
 def validate_subject_data(subject_data):
@@ -103,39 +121,40 @@ def display_learning_goals(df):
 
 # ── Dynamic form helpers ──────────────────────────────────────────────────────
 
-def render_subject_fields(subjects_list):
+def render_subject_fields(subjects_list, key_prefix=""):
     """
     Render input widgets for each subject in subjects_list.
     Returns a dict keyed by subject name.
     """
     subject_data = {}
     for subject in subjects_list:
+        widget_key = f"{key_prefix}{subject}".replace(" ", "_")
         st.subheader(f"Details for {subject}")
         subject_data[subject] = {
             "understanding_level": st.selectbox(
                 f"Level of Understanding for {subject}",
                 ["Beginner", "Intermediate", "Advanced"],
-                key=f"understanding_{subject}",
+                key=f"understanding_{widget_key}",
             ),
             "past_learning_methods": st.text_area(
                 f"Past Learning Methods for {subject}",
                 placeholder="e.g. Lectures, Online Courses, Textbooks",
-                key=f"methods_{subject}",
+                key=f"methods_{widget_key}",
             ),
             "confidence_level": st.slider(
                 f"Confidence Level for {subject} (1–5)", 1, 5, 3,
-                key=f"confidence_{subject}",
+                key=f"confidence_{widget_key}",
             ),
             "learning_goals": st.text_area(
                 f"Learning Goals for {subject}",
                 placeholder="e.g. master basics, prepare for an exam",
-                key=f"goals_{subject}",
+                key=f"goals_{widget_key}",
             ),
         }
     return subject_data
 
 
-def render_subject_fields_for_update(student_data):
+def render_subject_fields_for_update(student_data, key_prefix=""):
     """
     Render pre-filled input widgets for updating existing subject data.
     Returns the updated subject_data dict.
@@ -143,30 +162,34 @@ def render_subject_fields_for_update(student_data):
     subject_data = student_data.get("subject_details", {})
 
     for subject, data in subject_data.items():
+        widget_key = f"{key_prefix}{subject}".replace(" ", "_")
         st.subheader(f"Update details for {subject}")
+        confidence_levels = ["Beginner", "Intermediate", "Advanced"]
+        understanding_level = data.get("understanding_level", "Intermediate")
+        if understanding_level not in confidence_levels:
+            understanding_level = "Intermediate"
+
         subject_data[subject] = {
             "understanding_level": st.selectbox(
                 f"Level of Understanding for {subject}",
-                ["Beginner", "Intermediate", "Advanced"],
-                index=["Beginner", "Intermediate", "Advanced"].index(
-                    data.get("understanding_level", "Intermediate")
-                ),
-                key=f"understanding_update_{subject}",
+                confidence_levels,
+                index=confidence_levels.index(understanding_level),
+                key=f"understanding_update_{widget_key}",
             ),
             "past_learning_methods": st.text_area(
                 f"Past Learning Methods for {subject}",
                 value=data.get("past_learning_methods", ""),
-                key=f"methods_update_{subject}",
+                key=f"methods_update_{widget_key}",
             ),
             "confidence_level": st.slider(
                 f"Confidence Level for {subject} (1–5)", 1, 5,
                 data.get("confidence_level", 3),
-                key=f"confidence_update_{subject}",
+                key=f"confidence_update_{widget_key}",
             ),
             "learning_goals": st.text_area(
                 f"Learning Goals for {subject}",
                 value=data.get("learning_goals", ""),
-                key=f"goals_update_{subject}",
+                key=f"goals_update_{widget_key}",
             ),
         }
 
