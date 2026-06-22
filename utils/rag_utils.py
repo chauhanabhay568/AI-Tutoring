@@ -17,12 +17,16 @@ logger = logging.getLogger(__name__)
 
 def extract_text_from_pdf(uploaded_file: Any) -> str:
     """Extract plain text from an uploaded PDF file."""
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
     with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
         return "\n".join(page.get_text() for page in doc)
 
 
 def extract_text_from_txt(uploaded_file: Any) -> str:
     """Decode and return text from an uploaded TXT file."""
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
     return uploaded_file.read().decode("utf-8").strip()
 
 

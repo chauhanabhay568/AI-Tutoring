@@ -92,6 +92,24 @@ if submitted:
         st.error("Specific subtopics must be 1000 characters or fewer.")
     else:
         st.session_state.topic_pref_submitted = True
+        st.session_state.messages = []
+        st.session_state.pop("collection", None)
+
+        if previous_experience == "Yes" and uploaded_file:
+            if embedding_model is None:
+                st.info("Document retrieval is unavailable right now, so your chat will continue without uploaded context.")
+            else:
+                try:
+                    collection = ingest_file_to_chroma(
+                        uploaded_file,
+                        embedding_model,
+                        st.session_state.chroma_client,
+                    )
+                except ValueError as exc:
+                    st.error(str(exc))
+                else:
+                    if collection is not None:
+                        st.session_state.collection = collection
 
 # ── Chat ──────────────────────────────────────────────────────────────────────
 if "messages" not in st.session_state:
@@ -120,24 +138,6 @@ if st.session_state.get("topic_pref_submitted"):
         "previous_experience": previous_experience,
     }
 
-    # Ingest uploaded file once
-    if previous_experience == "Yes" and uploaded_file:
-        with st.spinner("Processing document…"):
-            if embedding_model is None:
-                st.info("Document retrieval is unavailable right now, so your chat will continue without uploaded context.")
-            else:
-                try:
-                    collection = ingest_file_to_chroma(
-                        uploaded_file,
-                        embedding_model,
-                        st.session_state.chroma_client,
-                    )
-                except ValueError as exc:
-                    st.error(str(exc))
-                else:
-                    if collection is not None:
-                        st.session_state.collection = collection
-
     system_prompt = build_system_prompt(student_prefs)
 
     # Render chat history
@@ -150,7 +150,7 @@ if st.session_state.get("topic_pref_submitted"):
             st.error("Messages must be 1000 characters or fewer.")
         else:
             context = ""
-            if previous_experience == "Yes" and uploaded_file:
+            if previous_experience == "Yes" and st.session_state.get("collection") is not None:
                 context = retrieve_context(
                     prompt,
                     embedding_model,
