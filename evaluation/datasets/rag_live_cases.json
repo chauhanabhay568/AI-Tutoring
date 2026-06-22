@@ -1,0 +1,20 @@
+[
+  {
+    "id": "live_recursion_01",
+    "document_path": "sample_python_basics.txt",
+    "input": "What is recursion in Python and why do we need a base case?",
+    "expected_output": "Recursion is when a function calls itself. A base case stops the repeated calls so the function does not recurse forever."
+  },
+  {
+    "id": "live_list_mutability_02",
+    "document_path": "sample_python_basics.txt",
+    "input": "Can a Python list be changed after it is created?",
+    "expected_output": "Yes. Python lists are mutable, so items can be added, removed, or replaced after creation."
+  },
+  {
+    "id": "live_recursion_03",
+    "document_path": "sample_python_basics.txt",
+    "input": "What happens if recursion has no base case?",
+    "expected_output": "Without a base case, recursion keeps calling itself until it reaches a recursion limit or fails."
+  }
+]

@@ -59,8 +59,7 @@ def ingest_file_to_chroma(
         raise ValueError("chroma_client is required for Chroma ingestion.")
 
     file_type = uploaded_file.type
-    print(f"[rag_utils] ingest_file_to_chroma: file={getattr(uploaded_file, 'name', '<unknown>')}, type={file_type}")
-
+    
     if file_type == "application/pdf":
         text = extract_text_from_pdf(uploaded_file)
     elif file_type == "text/plain":
@@ -69,8 +68,7 @@ def ingest_file_to_chroma(
         raise ValueError("Unsupported file format. Please upload a PDF or TXT file.")
 
     chunks = chunk_text(text)
-    print(f"[rag_utils] extracted {len(chunks)} chunks from {getattr(uploaded_file, 'name', '<unknown>')}")
-
+    
     for col in chroma_client.list_collections():
         chroma_client.delete_collection(col)
 
@@ -83,7 +81,6 @@ def ingest_file_to_chroma(
         embeddings=embeddings,
         metadatas=[{"chunk_id": i, "source": uploaded_file.name} for i in range(len(chunks))],
     )
-    print(f"[rag_utils] stored {len(chunks)} chunks in Chroma collection 'session_documents'")
     return collection
 
 
@@ -111,14 +108,12 @@ def retrieve_context(
         return ""
 
     try:
-        print(f"[rag_utils] retrieve_context running for query length={len(query)} with n_results={n_results}")
         query_embedding = embedding_model.encode(query)
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=n_results,
         )
         chunks = results.get("documents", [[]])[0]
-        print(f"[rag_utils] retrieve_context returned {len(chunks)} chunks")
         return "\n\n".join(chunks)
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
         logger.exception("Context retrieval failed: %s", exc)
