@@ -1,11 +1,10 @@
-import os
 import streamlit as st
-import openai
 from dotenv import dotenv_values
 
 from navigation import make_sidebar
 from database.student_db import get_student_by_email
 from utils.css_utils import load_css
+from utils.llm_client import build_llm_client
 from utils.quiz_utils import (
     init_quiz_session_state,
     clear_quiz_session_state,
@@ -18,7 +17,11 @@ from utils.quiz_utils import (
 
 # ── Config ────────────────────────────────────────────────────────────────────
 config = dotenv_values()
-openai.api_key = config.get("OPENAI_API_KEY", "")
+
+
+@st.cache_resource
+def load_llm():
+    return build_llm_client()
 
 make_sidebar()
 load_css("styles/style.css")
@@ -33,6 +36,8 @@ student = get_student_by_email(email)
 if not student:
     st.error("Please complete your profile in My Account before using Quiz Help.")
     st.stop()
+
+llm_client = load_llm()
 
 # ── Preference form ───────────────────────────────────────────────────────────
 st.header("Quiz Preferences")
@@ -97,6 +102,7 @@ if ready:
             st.session_state.quiz_understanding,
             st.session_state.quiz_num_questions,
             st.session_state.quiz_focus,
+            llm_client,
         )
         st.session_state.quiz_raw_response = raw
         st.session_state.quiz_already_generated = True
@@ -153,6 +159,6 @@ if st.session_state.quiz_result_submitted:
     st.subheader("Personalised Feedback")
     with st.expander("See recommendations"):
         with st.spinner("Generating feedback…"):
-            st.write(get_quiz_feedback(display_string, st.session_state, score / total))
+            st.write(get_quiz_feedback(display_string, st.session_state, score / total, llm_client))
 
     clear_quiz_session_state()

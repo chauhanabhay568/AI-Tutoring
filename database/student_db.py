@@ -1,167 +1,191 @@
+import json
 import os
-from pymongo import MongoClient, errors
-from pymongo.server_api import ServerApi
+import sqlite3
+
 from dotenv import dotenv_values
 
 config = dotenv_values()
-
-# Private constants — underscore means only used inside this file
-_DB_NAME = "ai_tutoring"
-_COLLECTION_NAME = "student_data"
-
-# Load URI from 
-_uri = config.get("MONGODB_URI", "mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority")
-
-# FIX 1: Lazy connection variables
-# Previously the connection was created at import time — if MongoDB was down
-# or the URI was wrong, the entire app crashed before showing the login page.
-# Now we create the connection only when it is first needed.
-_client = None
-_students = None
-
-
-def _get_collection():
-    """
-    Return the students collection, creating the MongoDB connection
-    on first use (lazy initialisation).
-    """
-    global _client, _students
-    if _students is None:
-        _client = MongoClient(
-                                _uri,
-                                server_api=ServerApi("1"),
-                                tls=True,
-                                tlsAllowInvalidCertificates=True
-                            )
-        _students = _client[_DB_NAME][_COLLECTION_NAME]
-    return _students
+DB_PATH = config.get("SQLITE_STUDENT_DB_PATH", "database_files/student_data.db")
 
 
 # ── Database setup ────────────────────────────────────────────────────────────
 
 def init_student_db():
-    """
-    Create a unique index on email and verify the connection is reachable.
-    Called once at app startup.
-    """
-    try:
-        _get_collection().create_index("email", unique=True)
+    """Create the database folder and student_profiles table if they do not exist."""
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
 
-        # FIX 2: Ping MongoDB to confirm the connection actually works.
-        # Without this, a bad URI only causes an error much later when
-        # a student tries to save their profile — confusing to debug.
-        _client.admin.command("ping")
-        print("[student_db] Connected to MongoDB successfully.")
-    except errors.PyMongoError as e:
-        print(f"[student_db] init error: {e}")
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS student_profiles (
+                email TEXT PRIMARY KEY,
+                data  TEXT NOT NULL
+            )
+        """)
+        conn.commit()
+    print("[student_db] Initialised SQLite student store.")
+
+
+# ── Private helpers ───────────────────────────────────────────────────────────
+
+def _normalise(email: str) -> str:
+    return email.strip().lower()
+
+
+def _row_to_dict(email: str, data_json: str) -> dict:
+    return {"email": email, **json.loads(data_json)}
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def save_student_data(data):
-    """
-    Insert a new student document.
-    Returns a status message string.
-    """
-    # FIX 3: Normalise email to lowercase before saving.
-    # Without this "Abhay@Gmail.com" and "abhay@gmail.com" would be
-    # treated as two different students and create duplicate profiles.
-    if "email" in data:
-        data["email"] = data["email"].strip().lower()
-
+def save_student_data(data: dict) -> str:
+    """Insert a new student profile. Returns a status message string."""
+    data = dict(data)
+    email = _normalise(data.pop("email", ""))
+    if not email:
+        return "Error saving data: email is required."
     try:
-        _get_collection().insert_one(data)
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute(
+                "INSERT INTO student_profiles (email, data) VALUES (?, ?)",
+                (email, json.dumps(data)),
+            )
+            conn.commit()
         return "Data saved successfully."
-    except errors.DuplicateKeyError:
+    except sqlite3.IntegrityError:
         return "A profile for this email already exists."
     except Exception as e:
         return f"Error saving data: {e}"
 
 
-def update_student_data(email, updated_fields):
-    """
-    Update non-immutable fields for a student.
-    Returns a status message string.
-    """
-    # FIX 3: Normalise email so "Abhay@Gmail.com" finds the same
-    # profile as "abhay@gmail.com"
-    email = email.strip().lower()
-
-    # FIX 4: Added try/except around update.
-    # Previously if MongoDB was down during an update the app crashed
-    # with an unhandled exception. Now it returns a friendly message.
+def get_student_by_email(email: str) -> dict | None:
+    """Return the student profile dict, or None if not found."""
+    email = _normalise(email)
     try:
-        result = _get_collection().update_one(
-            {"email": email},
-            {"$set": updated_fields}
-        )
-        if result.matched_count == 0:
-            return "No profile found for this email."
-        return "Data updated successfully."
-    except Exception as e:
-        return f"Error updating data: {e}"
-
-
-def get_student_by_email(email):
-    """
-    Return a single student document (without _id), or None if not found.
-    """
-    # FIX 3: Normalise email before querying
-    email = email.strip().lower()
-
-    try:
-        # {"_id": 0} tells MongoDB not to return the internal _id field
-        # because we don't need it and it causes issues with JSON conversion
-        return _get_collection().find_one({"email": email}, {"_id": 0})
+        with sqlite3.connect(DB_PATH) as conn:
+            row = conn.execute(
+                "SELECT data FROM student_profiles WHERE email = ?", (email,)
+            ).fetchone()
+        if row is None:
+            return None
+        return _row_to_dict(email, row[0])
     except Exception as e:
         print(f"[student_db] fetch error: {e}")
         return None
 
 
-def get_all_students():
-    """
-    Return all student documents (without _id) as a list.
-    Used by the admin account to download all data.
-    """
+def student_exists(email: str) -> bool:
+    """Return True if a profile exists for this email."""
+    email = _normalise(email)
     try:
-        # find({}) means no filter — get everything
-        # list() is needed because MongoDB returns a lazy cursor, not a list
-        return list(_get_collection().find({}, {"_id": 0}))
+        with sqlite3.connect(DB_PATH) as conn:
+            count = conn.execute(
+                "SELECT COUNT(*) FROM student_profiles WHERE email = ?", (email,)
+            ).fetchone()[0]
+        return count > 0
+    except Exception:
+        return False
+
+
+def update_student_data(email: str, updated_fields: dict) -> str:
+    """Merge updated_fields into the existing profile. Returns a status message."""
+    email = _normalise(email)
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            row = conn.execute(
+                "SELECT data FROM student_profiles WHERE email = ?", (email,)
+            ).fetchone()
+            if row is None:
+                return "No profile found for this email."
+            existing = json.loads(row[0])
+            existing.update(updated_fields)
+            conn.execute(
+                "UPDATE student_profiles SET data = ? WHERE email = ?",
+                (json.dumps(existing), email),
+            )
+            conn.commit()
+        return "Data updated successfully."
+    except Exception as e:
+        return f"Error updating data: {e}"
+
+
+def get_all_students() -> list[dict]:
+    """Return all student profiles as a list of dicts."""
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            rows = conn.execute(
+                "SELECT email, data FROM student_profiles"
+            ).fetchall()
+        return [_row_to_dict(r[0], r[1]) for r in rows]
     except Exception as e:
         print(f"[student_db] fetch_all error: {e}")
         return []
 
 
-def student_exists(email):
-    """
-    FIX 5: Lightweight check — returns True if a profile exists for this email.
-
-    Previously every page called get_student_by_email() just to check existence,
-    which fetched the entire document unnecessarily.
-    count_documents() with limit=1 stops as soon as it finds one match —
-    much faster and uses less memory.
-    """
+def delete_student(email: str) -> str:
+    """Delete a student profile by email. Returns a status message."""
+    email = _normalise(email)
     try:
-        return _get_collection().count_documents(
-            {"email": email.strip().lower()}, limit=1
-        ) > 0
-    except Exception:
-        return False
-
-
-def delete_student(email):
-    """
-    FIX 6: Delete a student profile by email.
-
-    This function was missing entirely. Useful for:
-    - Admin cleanup
-    - Letting students delete their own account
-    - Removing test data during development
-    """
-    try:
-        result = _get_collection().delete_one({"email": email.strip().lower()})
-        if result.deleted_count == 0:
+        with sqlite3.connect(DB_PATH) as conn:
+            result = conn.execute(
+                "DELETE FROM student_profiles WHERE email = ?", (email,)
+            )
+            conn.commit()
+        if result.rowcount == 0:
             return "No profile found for this email."
         return "Profile deleted successfully."
     except Exception as e:
         return f"Error deleting profile: {e}"
+
+
+def migrate_from_mongodb(mongodb_uri: str | None = None) -> dict:
+    """
+    Copy all documents from a MongoDB student collection into SQLite.
+    Existing local records are preserved (INSERT OR IGNORE).
+    Returns {"migrated": int, "skipped": int, "failed": int, "errors": list[str]}.
+    """
+    uri = mongodb_uri or config.get("MONGODB_URI", "")
+    result: dict = {"migrated": 0, "skipped": 0, "failed": 0, "errors": []}
+
+    if not uri:
+        result["errors"].append(
+            "MONGODB_URI is not set. Provide it via the mongodb_uri argument or the MONGODB_URI env var."
+        )
+        return result
+
+    try:
+        from pymongo import MongoClient
+        from pymongo.server_api import ServerApi
+
+        client = MongoClient(uri, server_api=ServerApi("1"), tls=True, tlsAllowInvalidCertificates=True)
+        client.admin.command("ping")
+        collection = client["ai_tutoring"]["student_data"]
+        docs = list(collection.find({}, {"_id": 0}))
+    except Exception as e:
+        result["errors"].append(f"MongoDB connection failed: {e}")
+        return result
+
+    with sqlite3.connect(DB_PATH) as conn:
+        for doc in docs:
+            doc = dict(doc)
+            email = _normalise(doc.pop("email", ""))
+            if not email:
+                result["failed"] += 1
+                result["errors"].append("Document missing email field — skipped.")
+                continue
+            try:
+                conn.execute(
+                    "INSERT OR IGNORE INTO student_profiles (email, data) VALUES (?, ?)",
+                    (email, json.dumps(doc)),
+                )
+                if conn.execute("SELECT changes()").fetchone()[0] > 0:
+                    result["migrated"] += 1
+                else:
+                    result["skipped"] += 1
+            except Exception as e:
+                result["failed"] += 1
+                result["errors"].append(f"{email}: {e}")
+        conn.commit()
+
+    return result
