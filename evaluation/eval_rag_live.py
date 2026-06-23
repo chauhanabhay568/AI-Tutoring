@@ -40,7 +40,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate live RAG responses with DeepEval.")
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--model", default=os.getenv("DEEPEVAL_JUDGE_MODEL", "gpt-4.1-mini"))
+    parser.add_argument("--model", default=os.getenv("DEEPEVAL_JUDGE_MODEL", "llama-3.3-70b-versatile"))
     parser.add_argument("--threshold", type=float, default=0.7)
     parser.add_argument(
         "--validate-only",
