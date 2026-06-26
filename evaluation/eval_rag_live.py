@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import io
 import os
+import re
 import sys
 import uuid
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "evaluation" / "results"
 DEFAULT_DOCS_DIR = PROJECT_ROOT / "evaluation" / "datasets" / "docs"
 SUPPORTED_SUFFIXES = {".pdf", ".txt"}
 LIVE_EVALUATION_TYPE = "rag_live"
+MAX_COLLECTION_NAME_LENGTH = 63
 
 
 @dataclass(frozen=True)
@@ -144,6 +146,22 @@ def _build_minimal_student_prefs(case: LiveRagCase) -> dict[str, Any]:
     }
 
 
+def _make_collection_name(document_path: Path) -> str:
+    # Chroma collection names must be 3-63 chars and use only a restricted charset.
+    slug = re.sub(r"[^a-z0-9_-]+", "-", document_path.stem.lower()).strip("-_")
+    if not slug:
+        slug = "doc"
+
+    suffix = uuid.uuid4().hex[:8]
+    prefix = "live-rag"
+    available = MAX_COLLECTION_NAME_LENGTH - len(prefix) - len(suffix) - 2
+    slug = slug[: max(1, available)].strip("-_")
+    if not slug:
+        slug = "doc"
+
+    return f"{prefix}-{slug}-{suffix}"
+
+
 def _ingest_document(
     document_path: Path,
     embedding_model: EmbeddingClient,
@@ -157,9 +175,7 @@ def _ingest_document(
     if not chunks:
         raise DatasetValidationError(f"Document '{document_path.name}' could not be chunked.")
 
-    collection = chroma_client.create_collection(
-        name=f"live_rag_{document_path.stem}_{uuid.uuid4().hex}"
-    )
+    collection = chroma_client.create_collection(name=_make_collection_name(document_path))
     embeddings = [embedding_model.encode(chunk) for chunk in chunks]
     collection.add(
         ids=[f"{document_path.stem}_{index}" for index in range(len(chunks))],
