@@ -3,240 +3,374 @@
     "id": "lstm_01",
     "document_path": "LSTM Networks .pdf",
     "input": "What does the article say recurrent neural networks use to let information persist over time?",
-    "expected_output": "They use loops so information can pass from one step to the next and persist."
+    "expected_output": "They use loops so information can pass from one step to the next and persist.",
+    "retrieval_context": [
+      "Recurrent neural networks address this issue. They are networks with loops in them, allowing information to persist. In the above diagram, a chunk of neural network looks at some input and outputs a value. A loop allows information to be passed from one step of the network to the next.",
+      "A loop allows information to be passed from one step of the network to the next. These loops make recurrent neural networks seem kind of mysterious. However, a recurrent neural network can be thought of as multiple copies of the same network, each passing a message to a successor."
+    ]
   },
   {
     "id": "lstm_02",
     "document_path": "LSTM Networks .pdf",
     "input": "Why are traditional neural networks described as a poor fit for sequence information in the article?",
-    "expected_output": "They cannot easily carry reasoning from earlier events forward to later ones."
+    "expected_output": "They cannot easily carry reasoning from earlier events forward to later ones.",
+    "retrieval_context": [
+      "It's unclear how a traditional neural network could use its reasoning about previous events in the film to inform later ones. Recurrent neural networks address this issue. They are networks with loops in them, allowing information to persist.",
+      "Humans don't start their thinking from scratch every second. As you read this essay, you understand each word based on your understanding of previous words. You don't throw everything away and start thinking from scratch."
+    ]
   },
   {
     "id": "lstm_03",
     "document_path": "LSTM Networks .pdf",
     "input": "What kind of data are RNNs said to be naturally suited for?",
-    "expected_output": "They are naturally suited for sequences and lists."
+    "expected_output": "They are naturally suited for sequences and lists.",
+    "retrieval_context": [
+      "This chain-like nature reveals that recurrent neural networks are intimately related to sequences and lists. They're the natural architecture of neural network to use for such data. And they certainly are used! In the last few years, there have been incredible success applying RNNs to a variety of problems: speech recognition, language modeling, translation, image captioning."
+    ]
   },
   {
     "id": "lstm_04",
     "document_path": "LSTM Networks .pdf",
     "input": "What is the long-term dependency problem in an RNN?",
-    "expected_output": "It is the difficulty of using information from far back in the sequence when it is needed later."
+    "expected_output": "It is the difficulty of using information from far back in the sequence when it is needed later.",
+    "retrieval_context": [
+      "In cases where the gap between the relevant information and the place that it's needed is small, RNNs can learn to use the past information. But there are also cases where we need more context. Consider trying to predict the last word in the text 'I grew up in France… I speak fluent French.' Recent information suggests that the next word is probably a language.",
+      "But if we want to narrow down which language, we need the context of France, from further back. It's entirely possible for the gap between the relevant information and the point where it is needed to become very large. Unfortunately, as that gap grows, RNNs become unable to learn to connect the information."
+    ]
   },
   {
     "id": "lstm_05",
     "document_path": "LSTM Networks .pdf",
     "input": "What is the main purpose of LSTMs in the article?",
-    "expected_output": "LSTMs are designed to avoid the long-term dependency problem."
+    "expected_output": "LSTMs are designed to avoid the long-term dependency problem.",
+    "retrieval_context": [
+      "Long Short Term Memory networks – usually just called 'LSTMs' – are a special kind of RNN, capable of learning long-term dependencies. They work tremendously well on a large variety of problems, and are now widely used.",
+      "LSTMs are explicitly designed to avoid the long-term dependency problem. Remembering information for long periods of time is practically their default behavior, not something they struggle to learn!"
+    ]
   },
   {
     "id": "lstm_06",
     "document_path": "LSTM Networks .pdf",
     "input": "What is the cell state compared to in the article?",
-    "expected_output": "It is compared to a conveyor belt that runs through the chain."
+    "expected_output": "It is compared to a conveyor belt that runs through the chain.",
+    "retrieval_context": [
+      "The Core Idea Behind LSTMs. The key to LSTMs is the cell state, the horizontal line running through the top of the diagram. The cell state is kind of like a conveyor belt. It runs straight down the entire chain, with only some minor linear interactions. It's very easy for information to just flow along it unchanged. The LSTM does have the ability to remove or add information to the cell state, carefully regulated by structures called gates."
+    ]
   },
   {
     "id": "lstm_07",
     "document_path": "LSTM Networks .pdf",
     "input": "What controls the ability to remove or add information to the cell state?",
-    "expected_output": "That is controlled by gates."
+    "expected_output": "That is controlled by gates.",
+    "retrieval_context": [
+      "The LSTM does have the ability to remove or add information to the cell state, carefully regulated by structures called gates.",
+      "Gates are a way to optionally let information through. They are composed out of a sigmoid neural net layer and a pointwise multiplication operation. The sigmoid layer outputs numbers between zero and one, describing how much of each component should be let through. A value of zero means 'let nothing through,' while a value of one means 'let everything through!' An LSTM has three of these gates, to protect and control the cell state."
+    ]
   },
   {
     "id": "lstm_08",
     "document_path": "LSTM Networks .pdf",
     "input": "What do the sigmoid layers in LSTM gates output?",
-    "expected_output": "They output numbers between 0 and 1 that describe how much information should pass through."
+    "expected_output": "They output numbers between 0 and 1 that describe how much information should pass through.",
+    "retrieval_context": [
+      "Gates are a way to optionally let information through. They are composed out of a sigmoid neural net layer and a pointwise multiplication operation. The sigmoid layer outputs numbers between zero and one, describing how much of each component should be let through. A value of zero means 'let nothing through,' while a value of one means 'let everything through!'"
+    ]
   },
   {
     "id": "lstm_09",
     "document_path": "LSTM Networks .pdf",
     "input": "How many gates does an LSTM have according to the article?",
-    "expected_output": "An LSTM has three gates."
+    "expected_output": "An LSTM has three gates.",
+    "retrieval_context": [
+      "Gates are a way to optionally let information through. They are composed out of a sigmoid neural net layer and a pointwise multiplication operation. The sigmoid layer outputs numbers between zero and one, describing how much of each component should be let through. An LSTM has three of these gates, to protect and control the cell state."
+    ]
   },
   {
     "id": "lstm_10",
     "document_path": "LSTM Networks .pdf",
     "input": "What is the first step in the step-by-step LSTM walk-through?",
-    "expected_output": "The first step is deciding what information to throw away from the cell state."
+    "expected_output": "The first step is deciding what information to throw away from the cell state.",
+    "retrieval_context": [
+      "Step-by-Step LSTM Walk Through. The first step in our LSTM is to decide what information we're going to throw away from the cell state. This decision is made by a sigmoid layer called the 'forget gate layer.' It looks at the previous hidden state and current input, and outputs a number between 0 and 1 for each number in the cell state. A 1 represents 'completely keep this' while a 0 represents 'completely get rid of this.'"
+    ]
   },
   {
     "id": "lc3_microcode_01",
     "document_path": "lec09-lc3-ucode-br-instr.pdf",
     "input": "What does the lecture call the table of bits used to implement the FSM control logic?",
-    "expected_output": "It is called microcode."
+    "expected_output": "It is called microcode.",
+    "retrieval_context": [
+      "Note that add0, and0, and not0 return back to fetch0 once they're finished executing. This table of bits is called microcode. You will write it yourself in a big Excel spreadsheet in Project 2. On Quiz 2, you will also be expected to convert a state transition diagram to microcode."
+    ]
   },
   {
     "id": "lc3_microcode_02",
     "document_path": "lec09-lc3-ucode-br-instr.pdf",
     "input": "How is the ROM address formed in the LC-3 microcode example?",
-    "expected_output": "By concatenating the current state bits S5 through S0 with IR[15:12]."
+    "expected_output": "By concatenating the current state bits S5 through S0 with IR[15:12].",
+    "retrieval_context": [
+      "Here, ROM stands for Read-Only Memory. Concatenating the current state bits S5 S4 S3 S2 S1 S0 with the FSM input IR[15:12] forms an address. Looking up this address in the ROM yields the control signals (outputs) and the next state number."
+    ]
   },
   {
     "id": "lc3_microcode_03",
     "document_path": "lec09-lc3-ucode-br-instr.pdf",
     "input": "What does the ROM output when given a state and opcode address?",
-    "expected_output": "It yields the control signals and the next state number."
+    "expected_output": "It yields the control signals and the next state number.",
+    "retrieval_context": [
+      "Concatenating the current state bits S5 S4 S3 S2 S1 S0 with the FSM input IR[15:12] forms an address. Looking up this address in the ROM yields the control signals (outputs) and the next state number.",
+      "You can imagine this ROM as a giant truth table for a function that chooses the control signals and next state given a current state and opcode (IR[15:12])."
+    ]
   },
   {
     "id": "lc3_microcode_04",
     "document_path": "lec09-lc3-ucode-br-instr.pdf",
     "input": "What must you do with a state transition diagram to produce microcode?",
-    "expected_output": "Convert the FSM state transition diagram into a table of bits."
+    "expected_output": "Convert the FSM state transition diagram into a table of bits.",
+    "retrieval_context": [
+      "Course learning objective #3: Analyze the structure and examine the operation of a basic von Neumann CPU. Convert a state transition diagram describing the LC-3 FSM to microcode (a table of bits).",
+      "This table of bits is called microcode. On Quiz 2, you will also be expected to convert a state transition diagram to microcode."
+    ]
   },
   {
     "id": "lc3_microcode_05",
     "document_path": "lec09-lc3-ucode-br-instr.pdf",
     "input": "Where is the LC-3 finite state machine implemented in the microarchitecture?",
-    "expected_output": "It is implemented in the control unit."
+    "expected_output": "It is implemented in the control unit.",
+    "retrieval_context": [
+      "Following this framework, the FSM in the control unit of our LC-3 microarchitecture is implemented as the following circuit. Choosing 6 bits for the state register is determined by the number of states we need, which happens to be around 55 per Appendix C of the textbook."
+    ]
   },
   {
     "id": "lc3_branch_06",
     "document_path": "lec09-lc3-ucode-br-instr.pdf",
     "input": "What do branch instructions do in the LC-3?",
-    "expected_output": "They update the PC during the Execute phase to support control flow."
+    "expected_output": "They update the PC during the Execute phase to support control flow.",
+    "retrieval_context": [
+      "In this lecture, we will discuss LC-3 branch instructions, which enable control flow such as if-else statements, loops, and function calls. A branch instruction is a kind of instruction that updates the PC during the Execute phase. Because the PC holds the address of the next instruction to execute, branch instructions achieve control flow."
+    ]
   },
   {
     "id": "lc3_branch_07",
     "document_path": "lec09-lc3-ucode-br-instr.pdf",
     "input": "What kind of control flow can LC-3 branch instructions implement?",
-    "expected_output": "They can implement control flow such as if-else statements and loops."
+    "expected_output": "They can implement control flow such as if-else statements and loops.",
+    "retrieval_context": [
+      "In this lecture, we will discuss LC-3 branch instructions, which enable control flow such as if-else statements, loops, and function calls. A branch instruction is a kind of instruction that updates the PC during the Execute phase."
+    ]
   },
   {
     "id": "lc3_branch_08",
     "document_path": "lec09-lc3-ucode-br-instr.pdf",
     "input": "What is the first idea mentioned for implementing a branch instruction?",
-    "expected_output": "Set the PC to the value held in a temporary register."
+    "expected_output": "Set the PC to the value held in a temporary register.",
+    "retrieval_context": [
+      "The first idea for implementing a branch instruction is to set the PC to the value held in a temporary (R0-R7). This is what JMP does. The semantics (behavior) for JMP are the following: PC <- BaseR. The assembly syntax for JMP looks like JMP BaseR, e.g., JMP R3."
+    ]
   },
   {
     "id": "lc3_branch_09",
     "document_path": "lec09-lc3-ucode-br-instr.pdf",
     "input": "What makes the BR instruction conditional instead of always taken?",
-    "expected_output": "It depends on the condition codes N, Z, and P."
+    "expected_output": "It depends on the condition codes N, Z, and P.",
+    "retrieval_context": [
+      "We cannot conveniently implement an if statement because JMP is an unconditional branch (an instruction that always changes the PC), but we need a conditional branch (an instruction that changes the PC only if a condition is met). The next section will introduce the conditional branch instruction in the LC-3 ISA.",
+      "The semantics of BR are: if ((cn AND N) OR (cz AND Z) OR (cp AND P)) { PC <- PC* + SEXT(PCoffset9) }. In other words, if the condition is met, the PC offset is added to the PC. Else, the PC is left alone."
+    ]
   },
   {
     "id": "lc3_branch_10",
     "document_path": "lec09-lc3-ucode-br-instr.pdf",
     "input": "What do the N, Z, and P bits represent in a BR instruction?",
-    "expected_output": "They are the condition-code bits used to decide whether the branch is taken."
+    "expected_output": "They are the condition-code bits used to decide whether the branch is taken.",
+    "retrieval_context": [
+      "The semantics of BR are: if ((cn AND N) OR (cz AND Z) OR (cp AND P)) { PC <- PC* + SEXT(PCoffset9) }. N, Z, and P are 1-bit registers on the datapath.",
+      "N, Z, and P hold 1 if and only if the last value written to R0-R7 was negative, zero, or positive, respectively. Together, N, Z, and P are known as the condition code (CC)."
+    ]
   },
   {
     "id": "loader_01",
     "document_path": "lec10-lc3-assembly.pdf",
     "input": "What is the purpose of the loader in the LC-3 operating system?",
-    "expected_output": "It initializes memory according to what an object file specifies."
+    "expected_output": "It initializes memory according to what an object file specifies.",
+    "retrieval_context": [
+      "Your operating system includes a program called a loader that initializes memory according to what an object file on your hard disk specifies. Manually initializing memory to run realistic programs is tedious and error-prone."
+    ]
   },
   {
     "id": "loader_02",
     "document_path": "lec10-lc3-assembly.pdf",
     "input": "Why is manually initializing memory not a good way to load real programs?",
-    "expected_output": "Real programs are too large, so manual initialization is tedious and error-prone."
+    "expected_output": "Real programs are too large, so manual initialization is tedious and error-prone.",
+    "retrieval_context": [
+      "Web browsers and compilers span hundreds of thousands, if not millions, of memory locations. Manually initializing memory to run realistic programs is tedious and error-prone. To address this, your operating system includes a program called a loader that initializes memory according to what an object file on your hard disk specifies."
+    ]
   },
   {
     "id": "loader_03",
     "document_path": "lec10-lc3-assembly.pdf",
     "input": "What does the text section of an LC-3 object file contain?",
-    "expected_output": "It contains the words that the loader should use to initialize memory."
+    "expected_output": "It contains the words that the loader should use to initialize memory.",
+    "retrieval_context": [
+      "The line .TEXT starts a section named 'text'. The name 'text' is an awful historical name, but for our purposes right now, the 'text' section contains the words with which the loader should initialize memory. The word 0x3000 indicates that the window of memory to initialize begins at address 0x3000, and the word 0x0004 indicates that this window is four memory locations long."
+    ]
   },
   {
     "id": "loader_04",
     "document_path": "lec10-lc3-assembly.pdf",
     "input": "What do .ORIG and .END mean in LC-3 assembly?",
-    "expected_output": "They are assembler directives, not LC-3 instructions."
+    "expected_output": "They are assembler directives, not LC-3 instructions.",
+    "retrieval_context": [
+      "What are .ORIG and .END in the assembly code above? They are assembler directives. These are directions to the assembler for creating the object file; assembler directives are NOT LC-3 instructions. .orig x3000 / .end: Define a window of memory starting at address 0x3000."
+    ]
   },
   {
     "id": "loader_05",
     "document_path": "lec10-lc3-assembly.pdf",
     "input": "What does an assembler do with LC-3 assembly source code?",
-    "expected_output": "It converts assembly code into an object file."
+    "expected_output": "It converts assembly code into an object file.",
+    "retrieval_context": [
+      "Assembly code describes how memory should be initialized. A piece of software called an assembler converts assembly to an object file. This process is called assembling the code."
+    ]
   },
   {
     "id": "loader_06",
     "document_path": "lec10-lc3-assembly.pdf",
     "input": "What does the .STRINGZ directive do in LC-3 assembly?",
-    "expected_output": "It initializes memory with ASCII characters followed by a null terminator."
+    "expected_output": "It initializes memory with ASCII characters followed by a null terminator.",
+    "retrieval_context": [
+      "What are .ORIG and .END in the assembly code above? They are assembler directives. These are directions to the assembler for creating the object file; assembler directives are NOT LC-3 instructions.",
+      "Assembler directives include: .fill 420 to encode a value as a 16-bit word in memory, and .blkw 7 to reserve uninitialized memory locations. Additional directives like .stringz initialize memory with ASCII characters followed by a null terminator."
+    ]
   },
   {
     "id": "loader_07",
     "document_path": "lec10-lc3-assembly.pdf",
     "input": "Why is passing inputs and outputs through ordinary memory locations described as unwieldy?",
-    "expected_output": "It is awkward compared with reading input from the keyboard and printing output to the screen."
+    "expected_output": "It is awkward compared with reading input from the keyboard and printing output to the screen.",
+    "retrieval_context": [
+      "This strategy of passing inputs and outputs via ordinary memory locations is unwieldy. Ideally, we would want our assembly programs to read input from the keyboard and print output to the screen. We will tackle this in the next lecture."
+    ]
   },
   {
     "id": "loader_08",
     "document_path": "lec10-lc3-assembly.pdf",
     "input": "What action in LC3Tools runs the assembler on an assembly file?",
-    "expected_output": "Pressing Assemble runs the assembler and generates the object file."
+    "expected_output": "Pressing Assemble runs the assembler and generates the object file.",
+    "retrieval_context": [
+      "If I save this code to diff.asm and load it in LC3Tools, I can press 'Assemble' to run the assembler and generate the following object file, diff.obj."
+    ]
   },
   {
     "id": "loader_09",
     "document_path": "lec10-lc3-assembly.pdf",
     "input": "What problem does the example program use BRNZ to help solve?",
-    "expected_output": "It helps implement the loop used in the sum example."
+    "expected_output": "It helps implement the loop used in the sum example.",
+    "retrieval_context": [
+      "; Compute 0+1+2+...+N. R0 holds i, R1 holds sum. The program uses 'brnz -7' to repeat the loop body if i-N <= 0, i.e., while i <= N.",
+      "With labels, the loop is written as: LOOP add r1, r1, r0 ; sum = sum + i, then brnz LOOP ; repeat loop body if i-N <= 0 aka i <= N."
+    ]
   },
   {
     "id": "loader_10",
     "document_path": "lec10-lc3-assembly.pdf",
     "input": "What is the loader expected to do after an object file is loaded?",
-    "expected_output": "It should initialize memory starting at the address specified in the object file."
+    "expected_output": "It should initialize memory starting at the address specified in the object file.",
+    "retrieval_context": [
+      "Your operating system includes a program called a loader that initializes memory according to what an object file on your hard disk specifies.",
+      "The word 0x3000 indicates that the window of memory to initialize begins at address 0x3000. The loader initializes memory starting at that address with the words specified in the object file."
+    ]
   },
   {
     "id": "trap_jsr_01",
     "document_path": "lec11-lc3-trap-jsr.pdf",
     "input": "What is a TRAP instruction in LC-3?",
-    "expected_output": "It is a system call that asks the operating system to do something privileged."
+    "expected_output": "It is a system call that asks the operating system to do something privileged.",
+    "retrieval_context": [
+      "To perform operations that require privilege, such as I/O (input/output), LC-3 provides the TRAP instruction. A TRAP is a system call: a request for the OS (operating system) to do something privileged. The trapvect8 is the trap vector, aka the system call number, which identifies the operation the OS should do."
+    ]
   },
   {
     "id": "trap_jsr_02",
     "document_path": "lec11-lc3-trap-jsr.pdf",
     "input": "What does the trapvect8 field identify?",
-    "expected_output": "It identifies the system call number for the trap operation."
+    "expected_output": "It identifies the system call number for the trap operation.",
+    "retrieval_context": [
+      "A TRAP is a system call: a request for the OS (operating system) to do something privileged. The trapvect8 is the trap vector, aka the system call number, which identifies the operation the OS should do.",
+      "Here are some example system calls and their corresponding trap vectors: 0x25 -> HALT: Stop the clock. 0x20 -> GETC: Wait for a keypress and put its ASCII code into R0. 0x21 -> PUTC: Interpret R0 as an ASCII character and write it to the console."
+    ]
   },
   {
     "id": "trap_jsr_03",
     "document_path": "lec11-lc3-trap-jsr.pdf",
     "input": "What does trap vector 0x25 do?",
-    "expected_output": "It performs HALT and stops the clock."
+    "expected_output": "It performs HALT and stops the clock.",
+    "retrieval_context": [
+      "Here are some example system calls and their corresponding trap vectors: 0x25 -> HALT: Stop the clock. 0x20 -> GETC: Wait for a keypress and put its ASCII code into R0. 0x21 -> PUTC: Interpret R0 as an ASCII character and write it to the console."
+    ]
   },
   {
     "id": "trap_jsr_04",
     "document_path": "lec11-lc3-trap-jsr.pdf",
     "input": "What does GETC do in the LC-3 trap examples?",
-    "expected_output": "It waits for a keypress and places the ASCII code into R0."
+    "expected_output": "It waits for a keypress and places the ASCII code into R0.",
+    "retrieval_context": [
+      "Here are some example system calls and their corresponding trap vectors: 0x25 -> HALT: Stop the clock. 0x20 -> GETC: Wait for a keypress and put its ASCII code into R0. 0x21 -> PUTC: Interpret R0 as an ASCII character and write it to the console."
+    ]
   },
   {
     "id": "trap_jsr_05",
     "document_path": "lec11-lc3-trap-jsr.pdf",
     "input": "What does PUTC do in the LC-3 trap examples?",
-    "expected_output": "It writes the ASCII character in R0 to the console."
+    "expected_output": "It writes the ASCII character in R0 to the console.",
+    "retrieval_context": [
+      "Here are some example system calls and their corresponding trap vectors: 0x20 -> GETC: Wait for a keypress and put its ASCII code into R0. 0x21 -> PUTC: Interpret R0 as an ASCII character and write it to the console."
+    ]
   },
   {
     "id": "trap_jsr_06",
     "document_path": "lec11-lc3-trap-jsr.pdf",
     "input": "What does PUTS do?",
-    "expected_output": "It prints the null-terminated string starting at the address in R0."
+    "expected_output": "It prints the null-terminated string starting at the address in R0.",
+    "retrieval_context": [
+      "There is one more system call worth discussing: 0x22 -> PUTS: Interpret R0 as a memory address, specifically the starting address of a null-terminated string of ASCII characters. Print this string to the console. This is commonly used with the .stringz assembler directive."
+    ]
   },
   {
     "id": "trap_jsr_07",
     "document_path": "lec11-lc3-trap-jsr.pdf",
     "input": "What does the .STRINGZ directive create in memory?",
-    "expected_output": "It stores the characters of the string followed by a null terminator."
+    "expected_output": "It stores the characters of the string followed by a null terminator.",
+    "retrieval_context": [
+      "The .stringz assembler directive is commonly used with PUTS. For example, '.orig x4000 / .stringz \"tom\" / .end' would initialize memory as follows: 0x4000 = 0x0074 (ASCII for t), 0x4001 = 0x006F (ASCII for o), 0x4002 = 0x006D (ASCII for m), 0x4003 = 0x0000 (null terminator)."
+    ]
   },
   {
     "id": "trap_jsr_08",
     "document_path": "lec11-lc3-trap-jsr.pdf",
     "input": "Why is the JSRR instruction needed for subroutines?",
-    "expected_output": "It supports calling a subroutine and returning to the correct caller."
+    "expected_output": "It supports calling a subroutine and returning to the correct caller.",
+    "retrieval_context": [
+      "Imagine a program where two functions f() and g() both call the function my_func(). Changing the PC to point to the code inside my_func() is easy enough with the BR or JMP instructions. The challenge is implementing the return statement: where should it return to? A BR to either option cannot be safely hard-coded.",
+      "To resolve this, we could set a register, say R7, to the current PC (the address of the next instruction after the function call) and then implement return as JMP R7. At this point, we have derived the behavior of the JSRR instruction."
+    ]
   },
   {
     "id": "trap_jsr_09",
     "document_path": "lec11-lc3-trap-jsr.pdf",
     "input": "Which register holds the return address for JSRR?",
-    "expected_output": "R7 holds the return address."
+    "expected_output": "R7 holds the return address.",
+    "retrieval_context": [
+      "The semantics of JSRR are: In parallel: R7 <- PC*, PC <- BaseR. As demonstrated above, the JSRR saves the return address in R7 so that the callee can JMP R7 to return. In fact, in LC-3 assembly, one can write RET as shorthand for JMP R7."
+    ]
   },
   {
     "id": "trap_jsr_10",
     "document_path": "lec11-lc3-trap-jsr.pdf",
     "input": "How does a subroutine return after JSRR?",
-    "expected_output": "It returns with JMP R7, also called RET."
+    "expected_output": "It returns with JMP R7, also called RET.",
+    "retrieval_context": [
+      "The JSRR saves the return address in R7 so that the callee can JMP R7 to return. In fact, in LC-3 assembly, one can write RET as shorthand for JMP R7."
+    ]
   }
 ]
