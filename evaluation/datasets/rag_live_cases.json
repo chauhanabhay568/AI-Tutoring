@@ -1,20 +1,242 @@
 [
   {
-    "id": "live_recursion_01",
-    "document_path": "sample_python_basics.txt",
-    "input": "What is recursion in Python and why do we need a base case?",
-    "expected_output": "Recursion is when a function calls itself. A base case stops the repeated calls so the function does not recurse forever."
+    "id": "lstm_01",
+    "document_path": "LSTM Networks .pdf",
+    "input": "What does the article say recurrent neural networks use to let information persist over time?",
+    "expected_output": "They use loops so information can pass from one step to the next and persist."
   },
   {
-    "id": "live_list_mutability_02",
-    "document_path": "sample_python_basics.txt",
-    "input": "Can a Python list be changed after it is created?",
-    "expected_output": "Yes. Python lists are mutable, so items can be added, removed, or replaced after creation."
+    "id": "lstm_02",
+    "document_path": "LSTM Networks .pdf",
+    "input": "Why are traditional neural networks described as a poor fit for sequence information in the article?",
+    "expected_output": "They cannot easily carry reasoning from earlier events forward to later ones."
   },
   {
-    "id": "live_recursion_03",
-    "document_path": "sample_python_basics.txt",
-    "input": "What happens if recursion has no base case?",
-    "expected_output": "Without a base case, recursion keeps calling itself until it reaches a recursion limit or fails."
+    "id": "lstm_03",
+    "document_path": "LSTM Networks .pdf",
+    "input": "What kind of data are RNNs said to be naturally suited for?",
+    "expected_output": "They are naturally suited for sequences and lists."
+  },
+  {
+    "id": "lstm_04",
+    "document_path": "LSTM Networks .pdf",
+    "input": "What is the long-term dependency problem in an RNN?",
+    "expected_output": "It is the difficulty of using information from far back in the sequence when it is needed later."
+  },
+  {
+    "id": "lstm_05",
+    "document_path": "LSTM Networks .pdf",
+    "input": "What is the main purpose of LSTMs in the article?",
+    "expected_output": "LSTMs are designed to avoid the long-term dependency problem."
+  },
+  {
+    "id": "lstm_06",
+    "document_path": "LSTM Networks .pdf",
+    "input": "What is the cell state compared to in the article?",
+    "expected_output": "It is compared to a conveyor belt that runs through the chain."
+  },
+  {
+    "id": "lstm_07",
+    "document_path": "LSTM Networks .pdf",
+    "input": "What controls the ability to remove or add information to the cell state?",
+    "expected_output": "That is controlled by gates."
+  },
+  {
+    "id": "lstm_08",
+    "document_path": "LSTM Networks .pdf",
+    "input": "What do the sigmoid layers in LSTM gates output?",
+    "expected_output": "They output numbers between 0 and 1 that describe how much information should pass through."
+  },
+  {
+    "id": "lstm_09",
+    "document_path": "LSTM Networks .pdf",
+    "input": "How many gates does an LSTM have according to the article?",
+    "expected_output": "An LSTM has three gates."
+  },
+  {
+    "id": "lstm_10",
+    "document_path": "LSTM Networks .pdf",
+    "input": "What is the first step in the step-by-step LSTM walk-through?",
+    "expected_output": "The first step is deciding what information to throw away from the cell state."
+  },
+  {
+    "id": "lc3_microcode_01",
+    "document_path": "lec09-lc3-ucode-br-instr.pdf",
+    "input": "What does the lecture call the table of bits used to implement the FSM control logic?",
+    "expected_output": "It is called microcode."
+  },
+  {
+    "id": "lc3_microcode_02",
+    "document_path": "lec09-lc3-ucode-br-instr.pdf",
+    "input": "How is the ROM address formed in the LC-3 microcode example?",
+    "expected_output": "By concatenating the current state bits S5 through S0 with IR[15:12]."
+  },
+  {
+    "id": "lc3_microcode_03",
+    "document_path": "lec09-lc3-ucode-br-instr.pdf",
+    "input": "What does the ROM output when given a state and opcode address?",
+    "expected_output": "It yields the control signals and the next state number."
+  },
+  {
+    "id": "lc3_microcode_04",
+    "document_path": "lec09-lc3-ucode-br-instr.pdf",
+    "input": "What must you do with a state transition diagram to produce microcode?",
+    "expected_output": "Convert the FSM state transition diagram into a table of bits."
+  },
+  {
+    "id": "lc3_microcode_05",
+    "document_path": "lec09-lc3-ucode-br-instr.pdf",
+    "input": "Where is the LC-3 finite state machine implemented in the microarchitecture?",
+    "expected_output": "It is implemented in the control unit."
+  },
+  {
+    "id": "lc3_branch_06",
+    "document_path": "lec09-lc3-ucode-br-instr.pdf",
+    "input": "What do branch instructions do in the LC-3?",
+    "expected_output": "They update the PC during the Execute phase to support control flow."
+  },
+  {
+    "id": "lc3_branch_07",
+    "document_path": "lec09-lc3-ucode-br-instr.pdf",
+    "input": "What kind of control flow can LC-3 branch instructions implement?",
+    "expected_output": "They can implement control flow such as if-else statements and loops."
+  },
+  {
+    "id": "lc3_branch_08",
+    "document_path": "lec09-lc3-ucode-br-instr.pdf",
+    "input": "What is the first idea mentioned for implementing a branch instruction?",
+    "expected_output": "Set the PC to the value held in a temporary register."
+  },
+  {
+    "id": "lc3_branch_09",
+    "document_path": "lec09-lc3-ucode-br-instr.pdf",
+    "input": "What makes the BR instruction conditional instead of always taken?",
+    "expected_output": "It depends on the condition codes N, Z, and P."
+  },
+  {
+    "id": "lc3_branch_10",
+    "document_path": "lec09-lc3-ucode-br-instr.pdf",
+    "input": "What do the N, Z, and P bits represent in a BR instruction?",
+    "expected_output": "They are the condition-code bits used to decide whether the branch is taken."
+  },
+  {
+    "id": "loader_01",
+    "document_path": "lec10-lc3-assembly.pdf",
+    "input": "What is the purpose of the loader in the LC-3 operating system?",
+    "expected_output": "It initializes memory according to what an object file specifies."
+  },
+  {
+    "id": "loader_02",
+    "document_path": "lec10-lc3-assembly.pdf",
+    "input": "Why is manually initializing memory not a good way to load real programs?",
+    "expected_output": "Real programs are too large, so manual initialization is tedious and error-prone."
+  },
+  {
+    "id": "loader_03",
+    "document_path": "lec10-lc3-assembly.pdf",
+    "input": "What does the text section of an LC-3 object file contain?",
+    "expected_output": "It contains the words that the loader should use to initialize memory."
+  },
+  {
+    "id": "loader_04",
+    "document_path": "lec10-lc3-assembly.pdf",
+    "input": "What do .ORIG and .END mean in LC-3 assembly?",
+    "expected_output": "They are assembler directives, not LC-3 instructions."
+  },
+  {
+    "id": "loader_05",
+    "document_path": "lec10-lc3-assembly.pdf",
+    "input": "What does an assembler do with LC-3 assembly source code?",
+    "expected_output": "It converts assembly code into an object file."
+  },
+  {
+    "id": "loader_06",
+    "document_path": "lec10-lc3-assembly.pdf",
+    "input": "What does the .STRINGZ directive do in LC-3 assembly?",
+    "expected_output": "It initializes memory with ASCII characters followed by a null terminator."
+  },
+  {
+    "id": "loader_07",
+    "document_path": "lec10-lc3-assembly.pdf",
+    "input": "Why is passing inputs and outputs through ordinary memory locations described as unwieldy?",
+    "expected_output": "It is awkward compared with reading input from the keyboard and printing output to the screen."
+  },
+  {
+    "id": "loader_08",
+    "document_path": "lec10-lc3-assembly.pdf",
+    "input": "What action in LC3Tools runs the assembler on an assembly file?",
+    "expected_output": "Pressing Assemble runs the assembler and generates the object file."
+  },
+  {
+    "id": "loader_09",
+    "document_path": "lec10-lc3-assembly.pdf",
+    "input": "What problem does the example program use BRNZ to help solve?",
+    "expected_output": "It helps implement the loop used in the sum example."
+  },
+  {
+    "id": "loader_10",
+    "document_path": "lec10-lc3-assembly.pdf",
+    "input": "What is the loader expected to do after an object file is loaded?",
+    "expected_output": "It should initialize memory starting at the address specified in the object file."
+  },
+  {
+    "id": "trap_jsr_01",
+    "document_path": "lec11-lc3-trap-jsr.pdf",
+    "input": "What is a TRAP instruction in LC-3?",
+    "expected_output": "It is a system call that asks the operating system to do something privileged."
+  },
+  {
+    "id": "trap_jsr_02",
+    "document_path": "lec11-lc3-trap-jsr.pdf",
+    "input": "What does the trapvect8 field identify?",
+    "expected_output": "It identifies the system call number for the trap operation."
+  },
+  {
+    "id": "trap_jsr_03",
+    "document_path": "lec11-lc3-trap-jsr.pdf",
+    "input": "What does trap vector 0x25 do?",
+    "expected_output": "It performs HALT and stops the clock."
+  },
+  {
+    "id": "trap_jsr_04",
+    "document_path": "lec11-lc3-trap-jsr.pdf",
+    "input": "What does GETC do in the LC-3 trap examples?",
+    "expected_output": "It waits for a keypress and places the ASCII code into R0."
+  },
+  {
+    "id": "trap_jsr_05",
+    "document_path": "lec11-lc3-trap-jsr.pdf",
+    "input": "What does PUTC do in the LC-3 trap examples?",
+    "expected_output": "It writes the ASCII character in R0 to the console."
+  },
+  {
+    "id": "trap_jsr_06",
+    "document_path": "lec11-lc3-trap-jsr.pdf",
+    "input": "What does PUTS do?",
+    "expected_output": "It prints the null-terminated string starting at the address in R0."
+  },
+  {
+    "id": "trap_jsr_07",
+    "document_path": "lec11-lc3-trap-jsr.pdf",
+    "input": "What does the .STRINGZ directive create in memory?",
+    "expected_output": "It stores the characters of the string followed by a null terminator."
+  },
+  {
+    "id": "trap_jsr_08",
+    "document_path": "lec11-lc3-trap-jsr.pdf",
+    "input": "Why is the JSRR instruction needed for subroutines?",
+    "expected_output": "It supports calling a subroutine and returning to the correct caller."
+  },
+  {
+    "id": "trap_jsr_09",
+    "document_path": "lec11-lc3-trap-jsr.pdf",
+    "input": "Which register holds the return address for JSRR?",
+    "expected_output": "R7 holds the return address."
+  },
+  {
+    "id": "trap_jsr_10",
+    "document_path": "lec11-lc3-trap-jsr.pdf",
+    "input": "How does a subroutine return after JSRR?",
+    "expected_output": "It returns with JMP R7, also called RET."
   }
 ]
