@@ -8,11 +8,16 @@ import sys
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import chromadb
+from deepeval.models import GPTModel
 from deepeval.test_case import LLMTestCase
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 
 from evaluation.metrics import build_rag_metrics
 from evaluation.models import DatasetValidationError, load_json_list
@@ -21,10 +26,12 @@ from utils.llm_client import EmbeddingClient, LLMClient, build_embedding_client,
 from utils.rag_utils import build_system_prompt, chunk_text, extract_text_from_pdf, extract_text_from_txt
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATASET = PROJECT_ROOT / "evaluation" / "datasets" / "rag_live_cases.json"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "evaluation" / "results"
 DEFAULT_DOCS_DIR = PROJECT_ROOT / "evaluation" / "datasets" / "docs"
+DEFAULT_JUDGE_MODEL = "llama-3.3-70b-versatile"
+GROQ_API_KEY_NAME = "GROQ_API_KEY"
+GROQ_OPENAI_BASE_URL = "https://api.groq.com/openai/v1"
 SUPPORTED_SUFFIXES = {".pdf", ".txt"}
 LIVE_EVALUATION_TYPE = "rag_live"
 MAX_COLLECTION_NAME_LENGTH = 63
@@ -42,7 +49,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate live RAG responses with DeepEval.")
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--model", default=os.getenv("DEEPEVAL_JUDGE_MODEL", "llama-3.3-70b-versatile"))
+    parser.add_argument("--model", default=os.getenv("DEEPEVAL_JUDGE_MODEL", DEFAULT_JUDGE_MODEL))
     parser.add_argument("--threshold", type=float, default=0.7)
     parser.add_argument(
         "--validate-only",
@@ -50,6 +57,34 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Validate the dataset and document references without generating answers.",
     )
     return parser.parse_args(argv)
+
+
+def _project_env_values() -> dict[str, str | None]:
+    values: dict[str, str | None] = dict(dotenv_values(PROJECT_ROOT / ".env"))
+    values.update(os.environ)
+    return values
+
+
+def build_groq_judge_model(
+    model_name: str,
+    config: Mapping[str, str | None] | None = None,
+) -> GPTModel:
+    """Build a Groq-backed DeepEval judge with no OpenAI fallback."""
+    values = _project_env_values() if config is None else config
+    api_key = values.get(GROQ_API_KEY_NAME) or ""
+    if not api_key:
+        raise ValueError(
+            f"Missing required API key: '{GROQ_API_KEY_NAME}' must be set for "
+            "DeepEval Groq judge calls. OPENAI_API_KEY is not used as a judge fallback."
+        )
+
+    return GPTModel(
+        model=model_name,
+        api_key=api_key,
+        base_url=GROQ_OPENAI_BASE_URL,
+        cost_per_input_token=0,
+        cost_per_output_token=0,
+    )
 
 
 def _required_text(item: dict[str, Any], field: str, case_id: str) -> str:
@@ -260,7 +295,7 @@ def run_live_case(
     case: LiveRagCase,
     embedding_model: EmbeddingClient,
     llm_client: LLMClient,
-    judge_model: str,
+    judge_model: Any,
     threshold: float,
     docs_dir: Path = DEFAULT_DOCS_DIR,
 ) -> list[dict[str, Any]]:
@@ -306,7 +341,7 @@ def evaluate_live_cases(
     cases: list[LiveRagCase],
     embedding_model: EmbeddingClient,
     llm_client: LLMClient,
-    judge_model: str,
+    judge_model: Any,
     threshold: float,
     docs_dir: Path = DEFAULT_DOCS_DIR,
 ) -> list[dict[str, Any]]:
@@ -344,16 +379,29 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         cases = load_live_cases(args.dataset)
         if args.validate_only:
-            validate_dataset_documents(cases)
+            validate_dataset_documents(cases, DEFAULT_DOCS_DIR)
             print(f"Validated {len(cases)} live case(s).")
             return 0
     except DatasetValidationError as exc:
         print(f"Dataset error: {exc}", file=sys.stderr)
         return 2
 
-    embedding_model = build_embedding_client()
-    llm_client = build_llm_client()
-    rows = evaluate_live_cases(cases, embedding_model, llm_client, args.model, args.threshold)
+    try:
+        judge_model = build_groq_judge_model(args.model)
+        embedding_model = build_embedding_client()
+        llm_client = build_llm_client()
+    except ValueError as exc:
+        print(f"Configuration error: {exc}", file=sys.stderr)
+        return 2
+
+    rows = evaluate_live_cases(
+        cases,
+        embedding_model,
+        llm_client,
+        judge_model,
+        args.threshold,
+        DEFAULT_DOCS_DIR,
+    )
     csv_path, json_path = write_reports(rows, args.output_dir)
     print("\nAggregate results:")
     for metric, values in summarize(rows)["metric_summary"].items():
