@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import warnings
 from typing import Any
 
@@ -7,6 +8,16 @@ import openai
 from dotenv import dotenv_values
 
 DEFAULT_EMBEDDING_MODEL = "nomic-embed-text-v1_5"
+DEFAULT_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+
+_CAPTION_PROMPT = (
+    "This image is from a student study document. "
+    "Describe what it shows in 2-4 sentences. "
+    "If it is a chart or graph, explain the data and trends it presents. "
+    "If it is a diagram, describe the components and relationships. "
+    "If it is a table, summarise the key data. "
+    "Be concise and factual."
+)
 
 PROVIDER_BASE_URLS: dict[str, str | None] = {
     "groq": "https://api.groq.com/openai/v1",
@@ -32,11 +43,13 @@ class LLMClient:
         model: str,
         fallback: openai.OpenAI | None = None,
         fallback_model: str = "gpt-3.5-turbo",
+        vision_model: str = DEFAULT_VISION_MODEL,
     ) -> None:
         self.primary = primary
         self.model = model
         self._fallback = fallback
         self.fallback_model = fallback_model
+        self.vision_model = vision_model
 
     def complete(self, messages: list[dict], **kwargs) -> Any:
         """Non-streaming completion with automatic OpenAI fallback on provider error."""
@@ -56,6 +69,25 @@ class LLMClient:
         return self.primary.chat.completions.create(
             model=self.model, messages=messages, stream=True, **kwargs
         )
+
+    def caption_image(self, image_bytes: bytes) -> str:
+        """
+        Send image bytes to the vision model and return a text caption.
+        Uses the same primary client (same provider/key) with self.vision_model.
+        """
+        b64 = base64.b64encode(image_bytes).decode()
+        response = self.primary.chat.completions.create(
+            model=self.vision_model,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+                    {"type": "text", "text": _CAPTION_PROMPT},
+                ],
+            }],
+            max_tokens=200,
+        )
+        return response.choices[0].message.content.strip()
 
 
 def build_llm_client(config: dict | None = None) -> LLMClient:
@@ -103,7 +135,26 @@ def build_llm_client(config: dict | None = None) -> LLMClient:
     if openai_key and provider != "openai":
         fallback = openai.OpenAI(api_key=openai_key)
 
-    return LLMClient(primary, model, fallback, fallback_model)
+    vision_model = config.get("VISION_MODEL") or DEFAULT_VISION_MODEL
+    return LLMClient(primary, model, fallback, fallback_model, vision_model)
+
+
+def build_quiz_llm_client(config: dict | None = None) -> LLMClient:
+    """
+    Build an LLMClient for quiz/feedback tasks using QUIZ_MODEL env var.
+    Falls back to the chat model if QUIZ_MODEL is not set.
+    Same provider and API key as the main client.
+    """
+    if config is None:
+        config = dotenv_values()
+
+    quiz_model = config.get("QUIZ_MODEL") or ""
+    if not quiz_model:
+        return build_llm_client(config)
+
+    quiz_config = dict(config)
+    quiz_config["LLM_MODEL"] = quiz_model
+    return build_llm_client(quiz_config)
 
 
 class EmbeddingClient:

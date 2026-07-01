@@ -4,7 +4,7 @@ from dotenv import dotenv_values
 from navigation import make_sidebar
 from database.student_db import get_student_by_email
 from utils.css_utils import load_css
-from utils.llm_client import build_llm_client
+from utils.llm_client import build_quiz_llm_client
 from utils.subject_management import get_subject_list
 from utils.quiz_utils import (
     init_quiz_session_state,
@@ -22,7 +22,7 @@ config = dotenv_values()
 
 @st.cache_resource
 def load_llm():
-    return build_llm_client()
+    return build_quiz_llm_client()
 
 make_sidebar()
 load_css("styles/style.css")

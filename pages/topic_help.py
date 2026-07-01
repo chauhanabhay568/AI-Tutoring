@@ -104,6 +104,7 @@ if submitted:
                         uploaded_file,
                         embedding_model,
                         st.session_state.chroma_client,
+                        llm_client=llm,
                     )
                 except ValueError as exc:
                     st.error(str(exc))
@@ -162,10 +163,17 @@ if st.session_state.get("topic_pref_submitted"):
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
-                full_prompt = system_prompt + (f"\n\nContext:\n{context}" if context else "")
-                history = [{"role": "system", "content": full_prompt}]
+                history = [{"role": "system", "content": system_prompt}]
+                # Prior turns (exclude the current user message already appended above)
                 history += [{"role": m["role"], "content": m["content"]}
-                            for m in st.session_state.messages[-5:]]
+                            for m in st.session_state.messages[:-1][-4:]]
+                # Current user message: context injected here so the model
+                # attributes it to the question being asked, not global background
+                current_content = (
+                    f"{prompt}\n\n[Context from your document]\n{context}"
+                    if context else prompt
+                )
+                history.append({"role": "user", "content": current_content})
 
                 try:
                     stream = llm.stream(history)

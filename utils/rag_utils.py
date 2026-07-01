@@ -5,6 +5,7 @@ from typing import Any
 
 import fitz  # PyMuPDF
 import streamlit as st
+from rank_bm25 import BM25Okapi
 
 try:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -13,15 +14,143 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+_cross_encoder = None
+# BM25 cache: keyed by id(collection) → (corpus_docs, BM25Okapi index)
+_bm25_cache: dict[int, tuple[list[str], BM25Okapi]] = {}
+
+_STOPWORDS = frozenset({
+    "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
+    "of", "with", "by", "from", "is", "it", "be", "as", "so", "we", "he",
+    "she", "they", "this", "that", "are", "was", "were", "been", "have",
+    "has", "had", "do", "does", "did", "will", "would", "could", "should",
+    "may", "might", "can", "not", "no", "nor", "yet", "both", "either",
+    "neither", "what", "which", "who", "whom", "whose",
+})
+
+
+def _get_cross_encoder() -> Any:
+    global _cross_encoder
+    if _cross_encoder is None:
+        from sentence_transformers import CrossEncoder
+        _cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+    return _cross_encoder
+
+
+def _tokenize(text: str) -> list[str]:
+    return [t for t in text.lower().split() if t not in _STOPWORDS and len(t) > 1]
+
+
+def _get_bm25(collection: Any) -> tuple[list[str], BM25Okapi]:
+    """Return (all_docs, BM25Okapi) for a collection, building and caching on first call."""
+    col_id = id(collection)
+    if col_id not in _bm25_cache:
+        all_docs: list[str] = collection.get(include=["documents"]).get("documents") or []
+        tokenized = [_tokenize(doc) for doc in all_docs]
+        _bm25_cache[col_id] = (all_docs, BM25Okapi(tokenized))
+    return _bm25_cache[col_id]
+
 
 # ── Text extraction ──────────────────────────────────────────────────────────
 
-def extract_text_from_pdf(uploaded_file: Any) -> str:
-    """Extract plain text from an uploaded PDF file."""
+def _table_to_markdown(table: Any) -> str:
+    """Convert a PyMuPDF Table to a markdown string, with fallback for older versions."""
+    try:
+        return table.to_markdown()
+    except Exception:
+        rows = table.extract()
+        if not rows:
+            return ""
+        header = [str(c or "").strip() for c in rows[0]]
+        lines = [
+            "| " + " | ".join(header) + " |",
+            "| " + " | ".join("---" for _ in header) + " |",
+        ]
+        for row in rows[1:]:
+            lines.append("| " + " | ".join(str(c or "").strip() for c in row) + " |")
+        return "\n".join(lines)
+
+
+_MIN_IMAGE_PX = 100  # images smaller than this in either dimension are skipped (icons/decorations)
+
+
+def extract_text_from_pdf(uploaded_file: Any, llm_client: Any | None = None) -> str:
+    """
+    Extract text from a PDF, preserving table structure as markdown and
+    optionally captioning images with a vision LLM.
+
+    For each page:
+    1. Detects tables via PyMuPDF find_tables() and converts them to markdown.
+    2. Extracts plain-text blocks, skipping regions already captured as tables.
+    3. If llm_client is provided, extracts embedded images, captions each one
+       via the vision model, and inserts the caption at the image's page position.
+    4. Merges all parts in top-to-bottom reading order.
+    """
     if hasattr(uploaded_file, "seek"):
         uploaded_file.seek(0)
+
+    pages: list[str] = []
     with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
-        return "\n".join(page.get_text() for page in doc)
+        for page in doc:
+            parts: list[tuple[float, str]] = []
+            table_rects: list[Any] = []
+
+            # 1. Tables
+            try:
+                for table in page.find_tables():
+                    md = _table_to_markdown(table)
+                    if md.strip():
+                        bbox = table.bbox
+                        parts.append((bbox[1], md))
+                        table_rects.append(fitz.Rect(bbox))
+            except Exception:
+                pass
+
+            # 2. Plain-text blocks outside table regions
+            for block in page.get_text("blocks"):
+                if block[6] != 0:  # 0=text, 1=image
+                    continue
+                x0, y0, x1, y1, text = block[:5]
+                if not text.strip():
+                    continue
+                block_rect = fitz.Rect(x0, y0, x1, y1)
+                if any(not (block_rect & tr).is_empty for tr in table_rects):
+                    continue
+                parts.append((y0, text.strip()))
+
+            # 3. Images — caption via vision model when llm_client is provided
+            if llm_client is not None:
+                seen_xrefs: set[int] = set()
+                for img_info in page.get_images(full=False):
+                    xref = img_info[0]
+                    if xref in seen_xrefs:
+                        continue
+                    seen_xrefs.add(xref)
+
+                    rects = page.get_image_rects(xref)
+                    if not rects:
+                        continue
+                    rect = rects[0]
+                    if rect.width < _MIN_IMAGE_PX or rect.height < _MIN_IMAGE_PX:
+                        continue  # skip icons / decorative images
+                    if any(not (rect & tr).is_empty for tr in table_rects):
+                        continue  # image is part of a table cell — already captured
+
+                    try:
+                        pix = fitz.Pixmap(doc, xref)
+                        if pix.n - pix.alpha >= 4:  # CMYK → RGB
+                            pix = fitz.Pixmap(fitz.csRGB, pix)
+                        caption = llm_client.caption_image(pix.tobytes("png"))
+                        parts.append((rect.y0, f"[Figure: {caption}]"))
+                        logger.info("Captioned image xref=%d on page %d", xref, page.number + 1)
+                    except Exception as exc:
+                        logger.warning("Image captioning skipped (xref=%d): %s", xref, exc)
+
+            parts.sort(key=lambda p: p[0])
+            page_text = "\n\n".join(p[1] for p in parts)
+            if page_text.strip():
+                pages.append(page_text)
+
+    return "\n\n".join(pages)
 
 
 def extract_text_from_txt(uploaded_file: Any) -> str:
@@ -33,7 +162,7 @@ def extract_text_from_txt(uploaded_file: Any) -> str:
 
 # ── Chunking ─────────────────────────────────────────────────────────────────
 
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
+def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 150) -> list[str]:
     """Split text into overlapping chunks."""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=overlap
@@ -47,10 +176,14 @@ def ingest_file_to_chroma(
     uploaded_file: Any,
     embedding_model: Any | None,
     chroma_client: Any | None = None,
+    llm_client: Any | None = None,
 ) -> Any | None:
     """
     Extract text from an uploaded file, chunk it, embed it,
     and store everything in a fresh ChromaDB collection.
+
+    When llm_client is provided, embedded PDF images are captioned by the
+    vision model and their descriptions are included in the indexed text.
     """
     if embedding_model is None:
         logger.warning("Skipping Chroma ingestion because no embedding model is available.")
@@ -59,9 +192,9 @@ def ingest_file_to_chroma(
         raise ValueError("chroma_client is required for Chroma ingestion.")
 
     file_type = uploaded_file.type
-    
+
     if file_type == "application/pdf":
-        text = extract_text_from_pdf(uploaded_file)
+        text = extract_text_from_pdf(uploaded_file, llm_client=llm_client)
     elif file_type == "text/plain":
         text = extract_text_from_txt(uploaded_file)
     else:
@@ -84,16 +217,73 @@ def ingest_file_to_chroma(
     return collection
 
 
+def retrieve_context_chunks(
+    query: str,
+    embedding_model: Any | None,
+    collection: Any | None = None,
+    n_results: int = 5,
+    candidate_k: int = 15,
+) -> list[str]:
+    """
+    Hybrid BM25 + dense retrieval with cross-encoder reranking.
+
+    1. Dense: top-candidate_k chunks by embedding similarity.
+    2. BM25:  top-candidate_k chunks by keyword score over all stored chunks.
+    3. RRF:   reciprocal rank fusion over the union of both candidate sets.
+    4. Rerank: cross-encoder scores the fused list; top n_results returned.
+    """
+    if not query or embedding_model is None or collection is None:
+        return []
+
+    try:
+        # BM25 corpus — built once per collection object, then cached
+        all_docs, bm25 = _get_bm25(collection)
+        if not all_docs:
+            return []
+
+        n_cand = min(candidate_k, len(all_docs))
+
+        # 1. Dense retrieval
+        query_vec = embedding_model.encode(query)
+        dense_results = collection.query(query_embeddings=[query_vec], n_results=n_cand)
+        dense_chunks: list[str] = dense_results.get("documents", [[]])[0]
+        dense_rank: dict[str, int] = {c: r for r, c in enumerate(dense_chunks)}
+
+        # 2. BM25 retrieval (index already built)
+        bm25_scores = bm25.get_scores(_tokenize(query))
+        top_bm25_idx = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[:n_cand]
+        bm25_rank: dict[str, int] = {all_docs[i]: r for r, i in enumerate(top_bm25_idx)}
+
+        # 3. Reciprocal Rank Fusion (k=60 is standard)
+        candidates = list(set(dense_chunks) | {all_docs[i] for i in top_bm25_idx})
+        rrf_k = 60
+
+        def _rrf(chunk: str) -> float:
+            return 1.0 / (rrf_k + dense_rank.get(chunk, n_cand)) + \
+                   1.0 / (rrf_k + bm25_rank.get(chunk, n_cand))
+
+        candidates.sort(key=_rrf, reverse=True)
+        candidates = candidates[: candidate_k * 2]  # cap before reranking
+
+        # 4. Cross-encoder rerank
+        reranker = _get_cross_encoder()
+        scores = reranker.predict([[query, c] for c in candidates])
+        reranked = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
+
+        return [chunk for chunk, _ in reranked[:n_results]]
+
+    except Exception as exc:
+        logger.exception("Hybrid retrieval failed: %s", exc)
+        return []
+
+
 def retrieve_context(
     query: str,
     embedding_model: Any | None,
     collection: Any | None = None,
-    n_results: int = 3,
+    n_results: int = 5,
 ) -> str:
-    """
-    Embed a query and return the top-n most relevant chunks
-    from the current ChromaDB collection.
-    """
+    """Return retrieved chunks as a single string for injection into the LLM prompt."""
     if collection is None:
         try:
             collection = st.session_state.get("collection")
@@ -106,18 +296,8 @@ def retrieve_context(
             f"collection_present={collection is not None}"
         )
         return ""
-
-    try:
-        query_embedding = embedding_model.encode(query)
-        results = collection.query(
-            query_embeddings=[query_embedding],
-            n_results=n_results,
-        )
-        chunks = results.get("documents", [[]])[0]
-        return "\n\n".join(chunks)
-    except (AttributeError, KeyError, TypeError, ValueError) as exc:
-        logger.exception("Context retrieval failed: %s", exc)
-        return ""
+    chunks = retrieve_context_chunks(query, embedding_model, collection, n_results)
+    return "\n\n".join(chunks)
 
 
 # ── Prompt building ───────────────────────────────────────────────────────────

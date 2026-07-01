@@ -23,7 +23,7 @@ from evaluation.metrics import build_rag_metrics
 from evaluation.models import DatasetValidationError, load_json_list
 from evaluation.reporting import summarize, write_reports
 from utils.llm_client import EmbeddingClient, LLMClient, build_embedding_client, build_llm_client
-from utils.rag_utils import build_system_prompt, chunk_text, extract_text_from_pdf, extract_text_from_txt
+from utils.rag_utils import build_system_prompt, chunk_text, extract_text_from_pdf, extract_text_from_txt, retrieve_context_chunks
 
 
 DEFAULT_DATASET = PROJECT_ROOT / "evaluation" / "datasets" / "rag_live_cases.json"
@@ -221,20 +221,6 @@ def _ingest_document(
     return collection
 
 
-def retrieve_context_chunks(
-    query: str,
-    embedding_model: EmbeddingClient,
-    collection: Any,
-    n_results: int = 3,
-) -> list[str]:
-    query_embedding = embedding_model.encode(query)
-    results = collection.query(query_embeddings=[query_embedding], n_results=n_results)
-    documents = results.get("documents", [[]])
-    if not documents:
-        return []
-    chunks = documents[0] or []
-    return [chunk for chunk in chunks if isinstance(chunk, str) and chunk.strip()]
-
 
 def _completion_text(response: Any) -> str:
     if isinstance(response, str):
@@ -309,7 +295,7 @@ def run_live_case(
 
     chroma_client = chromadb.EphemeralClient()
     collection = _ingest_document(document_path, embedding_model, chroma_client)
-    retrieval_context = retrieve_context_chunks(case.input, embedding_model, collection, n_results=3)
+    retrieval_context = retrieve_context_chunks(case.input, embedding_model, collection, n_results=5)
     system_prompt = build_system_prompt(_build_minimal_student_prefs(case))
     context_text = "\n\n".join(retrieval_context)
     messages = [
